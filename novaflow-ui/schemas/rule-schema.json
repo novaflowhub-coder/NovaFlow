@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rule Definition",
+  "description": "Schema for a rule's conditions and actions stored as JSON",
+  "type": "object",
+  "properties": {
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "sourceAttribute": { "type": "string" },
+          "operator": { "type": "string" },
+          "value": { "type": "string" },
+          "conditionOperator": { "type": "string", "enum": ["AND", "OR", null] },
+          "parenthesis": { "type": "string", "enum": ["(", ")", ""] }
+        },
+        "required": ["id", "sourceAttribute", "operator", "value"]
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "targetAttribute": { "type": "string" },
+          "operator": { "type": "string" },
+          "expression": { "type": "string" }
+        },
+        "required": ["id", "targetAttribute", "operator", "expression"]
+      }
+    }
+  },
+  "required": ["conditions", "actions"]
+}

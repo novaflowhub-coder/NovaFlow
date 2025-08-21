@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UI Metadata Definition",
+  "description": "Schema for UI fields and sections",
+  "type": "object",
+  "properties": {
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "fieldName": { "type": "string" },
+          "label": { "type": "string" },
+          "dataType": { "type": "string" },
+          "displayType": { "type": "string" },
+          "section": { "type": "string" },
+          "order": { "type": "integer" },
+          "isRequired": { "type": "boolean" },
+          "isReadonly": { "type": "boolean" },
+          "isVisible": { "type": "boolean" },
+          "width": { "type": "string" },
+          "options": { "type": "array", "items": { "type": "object" } }
+        },
+        "required": ["id", "fieldName", "label", "dataType", "displayType", "section", "order"]
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "order": { "type": "integer" },
+          "columns": { "type": "integer" },
+          "fields": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "name", "type", "order", "columns", "fields"]
+      }
+    }
+  },
+  "required": ["fields", "sections"]
+}

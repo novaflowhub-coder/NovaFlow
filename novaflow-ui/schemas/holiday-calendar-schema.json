@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Holiday Calendar Definition",
+  "description": "Schema for Holiday Calendar configuration",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["Active", "Inactive"]
+    },
+    "holidays": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "date": { "type": "string", "format": "date" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "recurring": { "type": "boolean" }
+        },
+        "required": ["id", "date", "name", "recurring"]
+      }
+    },
+    "createdBy": { "type": "string" },
+    "createdDate": { "type": "string", "format": "date-time" },
+    "modifiedBy": { "type": "string" },
+    "modifiedDate": { "type": "string", "format": "date-time" }
+  },
+  "required": ["id", "name", "status", "holidays"]
+}

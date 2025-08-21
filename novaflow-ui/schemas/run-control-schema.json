@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Run Control Definition",
+  "description": "Schema for Run Control configuration including execution steps and trigger settings",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["Draft", "Pending Approval", "Approved", "Rejected"]
+    },
+    "executionMode": {
+      "type": "string",
+      "enum": ["Sequential", "Parallel"]
+    },
+    "triggerType": {
+      "type": "string",
+      "enum": ["OnDemand", "Scheduled", "RealTimeStream", "FileWatch"]
+    },
+    "scheduleConfig": {
+      "type": "object",
+      "properties": {
+        "cronExpression": { "type": "string" },
+        "timezone": { "type": "string" },
+        "holidayCalendarId": { "type": ["string", "null"] },
+        "skipOnHoliday": { "type": "boolean" },
+        "runOnNextBusinessDay": { "type": "boolean" }
+      },
+      "required": ["cronExpression", "timezone"]
+    },
+    "streamConfig": {
+      "type": "object",
+      "properties": {
+        "sourceId": { "type": "string" },
+        "topic": { "type": "string" },
+        "parameters": { "type": "object" }
+      },
+      "required": ["sourceId", "topic"]
+    },
+    "fileWatchConfig": {
+      "type": "object",
+      "properties": {
+        "directory": { "type": "string" },
+        "filePattern": { "type": "string" },
+        "eventType": {
+          "type": "string",
+          "enum": ["Created", "Modified", "Deleted", "Renamed", "All"]
+        }
+      },
+      "required": ["directory", "filePattern", "eventType"]
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "stepOrder": { "type": "integer" },
+          "runType": { "type": "string", "enum": ["Scaffold_In", "RuleSet", "Scaffold_Out"] },
+          "runTypeName": { "type": "string" },
+          "description": { "type": "string" },
+          "status": { "type": "string", "enum": ["A", "I"] }
+        },
+        "required": ["id", "stepOrder", "runType", "runTypeName", "status"]
+      }
+    },
+    "createdBy": { "type": "string" },
+    "createdDate": { "type": "string", "format": "date-time" },
+    "modifiedBy": { "type": "string" },
+    "modifiedDate": { "type": "string", "format": "date-time" }
+  },
+  "required": ["id", "name", "status", "executionMode", "triggerType", "steps"]
+}
