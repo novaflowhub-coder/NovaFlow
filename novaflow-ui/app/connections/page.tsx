@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { PlusCircle, Edit, Trash2, Zap, Loader2 } from "lucide-react"
+import { PlusCircle, Edit, Trash2, Zap, Loader2, Power, PowerOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"

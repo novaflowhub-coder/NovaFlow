@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,85 +18,108 @@ import {
 } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Search, UserPlus, Users, Shield, Lock, Edit, Trash } from "lucide-react"
+import { Search, UserPlus, Users, Shield, Lock, Edit, Trash, FileText, Plus } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
+import { Textarea } from "@/components/ui/textarea"
 
-// Mock data for users
+// Mock data for domains
+const mockDomains = [
+  { id: "DOM001", name: "Finance", code: "FINANCE" },
+  { id: "DOM002", name: "Human Resources", code: "HR" },
+  { id: "DOM003", name: "Sales", code: "SALES" },
+  { id: "DOM004", name: "Operations", code: "OPS" },
+]
+
+// Mock data for users with domain memberships
 const mockUsers = [
   {
     id: "user1",
     name: "John Smith",
     email: "john.smith@example.com",
-    role: "Administrator",
     status: "Active",
     lastLogin: "2024-01-15T10:30:00Z",
+    domainRoles: [
+      { domainId: "DOM001", domainName: "Finance", role: "Administrator" },
+      { domainId: "DOM002", domainName: "Human Resources", role: "Data Steward" },
+    ],
   },
   {
     id: "user2",
     name: "Jane Doe",
     email: "jane.doe@example.com",
-    role: "Data Steward",
     status: "Active",
     lastLogin: "2024-01-14T16:45:00Z",
+    domainRoles: [
+      { domainId: "DOM001", domainName: "Finance", role: "Data Steward" },
+      { domainId: "DOM003", domainName: "Sales", role: "Rule Author" },
+    ],
   },
   {
     id: "user3",
     name: "Robert Johnson",
     email: "robert.johnson@example.com",
-    role: "Rule Author",
     status: "Inactive",
     lastLogin: "2023-12-28T09:15:00Z",
+    domainRoles: [
+      { domainId: "DOM003", domainName: "Sales", role: "Rule Author" },
+    ],
   },
   {
     id: "user4",
     name: "Emily Wilson",
     email: "emily.wilson@example.com",
-    role: "Approver",
     status: "Active",
     lastLogin: "2024-01-15T08:20:00Z",
+    domainRoles: [
+      { domainId: "DOM001", domainName: "Finance", role: "Approver" },
+      { domainId: "DOM002", domainName: "Human Resources", role: "Approver" },
+      { domainId: "DOM004", domainName: "Operations", role: "Viewer" },
+    ],
   },
   {
     id: "user5",
     name: "Michael Brown",
     email: "michael.brown@example.com",
-    role: "Viewer",
     status: "Active",
     lastLogin: "2024-01-13T14:10:00Z",
+    domainRoles: [
+      { domainId: "DOM002", domainName: "Human Resources", role: "Viewer" },
+    ],
   },
 ]
 
-// Mock data for roles
+// Mock data for roles (domain-agnostic role definitions)
 const mockRoles = [
   {
     id: "role1",
     name: "Administrator",
-    description: "Full system access with user management capabilities",
+    description: "Full domain access with user management capabilities",
     userCount: 2,
   },
   {
     id: "role2",
     name: "Data Steward",
-    description: "Manages data objects and schemas",
+    description: "Manages data objects and schemas within domain",
     userCount: 3,
   },
   {
     id: "role3",
     name: "Rule Author",
-    description: "Creates and edits rules and rule sets",
+    description: "Creates and edits rules and rule sets within domain",
     userCount: 5,
   },
   {
     id: "role4",
     name: "Approver",
-    description: "Reviews and approves changes",
+    description: "Reviews and approves changes within domain",
     userCount: 4,
   },
   {
     id: "role5",
     name: "Viewer",
-    description: "Read-only access to the system",
+    description: "Read-only access to domain data",
     userCount: 8,
   },
 ]
@@ -172,19 +195,23 @@ export default function UserManagementPage() {
   const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false)
   const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false)
   const [isEditPermissionsDialogOpen, setIsEditPermissionsDialogOpen] = useState(false)
+  const [isAddPageDialogOpen, setIsAddPageDialogOpen] = useState(false)
+  const [isEditPageDialogOpen, setIsEditPageDialogOpen] = useState(false)
   const [selectedPage, setSelectedPage] = useState<string | null>(null)
   const [editingUser, setEditingUser] = useState<any>(null)
   const [editingRole, setEditingRole] = useState<any>(null)
   const [editingRoleName, setEditingRoleName] = useState("")
+  const [editingPage, setEditingPage] = useState<any>(null)
+  const [pages, setPages] = useState(mockPages)
 
   // Filter users based on search query and selected role
   const filteredUsers = mockUsers.filter((user) => {
     const matchesSearch =
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchQuery.toLowerCase())
+      user.domainRoles.some(dr => dr.role.toLowerCase().includes(searchQuery.toLowerCase()) || dr.domainName.toLowerCase().includes(searchQuery.toLowerCase()))
 
-    const matchesRole = selectedRole === "all" ? true : user.role === selectedRole
+    const matchesRole = selectedRole === "all" ? true : user.domainRoles.some(dr => dr.role === selectedRole)
 
     return matchesSearch && matchesRole
   })
@@ -261,6 +288,53 @@ export default function UserManagementPage() {
     setIsEditPermissionsDialogOpen(true)
   }
 
+  // Handle adding a new page
+  const handleAddPage = (formData: any) => {
+    const newPage = {
+      id: `page${pages.length + 1}`,
+      name: formData.name,
+      path: formData.path,
+      description: formData.description,
+    }
+    
+    setPages([...pages, newPage])
+    toast({
+      title: "Page Added",
+      description: `Page "${formData.name}" has been added successfully.`,
+    })
+    setIsAddPageDialogOpen(false)
+  }
+
+  // Handle editing a page
+  const handleEditPage = (page: any) => {
+    setEditingPage(page)
+    setIsEditPageDialogOpen(true)
+  }
+
+  // Handle saving page edits
+  const handleSavePageEdit = (formData: any) => {
+    setPages(pages.map(p => 
+      p.id === editingPage.id 
+        ? { ...p, ...formData }
+        : p
+    ))
+    toast({
+      title: "Page Updated",
+      description: `Page "${formData.name}" has been updated successfully.`,
+    })
+    setIsEditPageDialogOpen(false)
+    setEditingPage(null)
+  }
+
+  // Handle deleting a page
+  const handleDeletePage = (pageId: string) => {
+    setPages(pages.filter(p => p.id !== pageId))
+    toast({
+      title: "Page Deleted",
+      description: "Page has been deleted successfully.",
+    })
+  }
+
   return (
     <>
       <PageHeader
@@ -274,6 +348,10 @@ export default function UserManagementPage() {
           ) : activeTab === "roles" ? (
             <Button onClick={() => setIsAddRoleDialogOpen(true)}>
               <Shield className="mr-2 h-4 w-4" /> Add Role
+            </Button>
+          ) : activeTab === "pages" ? (
+            <Button onClick={() => setIsAddPageDialogOpen(true)}>
+              <FileText className="mr-2 h-4 w-4" /> Add Page
             </Button>
           ) : null
         }
@@ -289,6 +367,9 @@ export default function UserManagementPage() {
           </TabsTrigger>
           <TabsTrigger value="permissions" className="flex items-center">
             <Lock className="mr-2 h-4 w-4" /> Permissions
+          </TabsTrigger>
+          <TabsTrigger value="pages" className="flex items-center">
+            <FileText className="mr-2 h-4 w-4" /> Pages
           </TabsTrigger>
         </TabsList>
 
@@ -332,7 +413,7 @@ export default function UserManagementPage() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
+                      <TableHead>Domain Roles</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Last Login</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -343,7 +424,15 @@ export default function UserManagementPage() {
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.role}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {user.domainRoles.map((dr, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {dr.domainName}: {dr.role}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant={user.status === "Active" ? "default" : "secondary"}
@@ -529,6 +618,75 @@ export default function UserManagementPage() {
                     </CardContent>
                   </Card>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Pages Tab */}
+        <TabsContent value="pages" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Page Management</CardTitle>
+              <CardDescription>Manage system pages and their access controls</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative mb-4">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search pages..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Page Name</TableHead>
+                      <TableHead>Path</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pages.filter(page => 
+                      page.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      page.path.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      page.description.toLowerCase().includes(searchQuery.toLowerCase())
+                    ).map((page) => (
+                      <TableRow key={page.id}>
+                        <TableCell className="font-medium">{page.name}</TableCell>
+                        <TableCell>
+                          <code className="rounded bg-muted px-[0.3rem] py-[0.2rem] text-sm font-mono">
+                            {page.path}
+                          </code>
+                        </TableCell>
+                        <TableCell>{page.description}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditPage(page)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeletePage(page.id)}>
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {pages.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                          No pages found.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
@@ -788,6 +946,132 @@ export default function UserManagementPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Page Dialog */}
+      <PageDialog
+        open={isAddPageDialogOpen}
+        onOpenChange={setIsAddPageDialogOpen}
+        onSave={handleAddPage}
+        title="Add New Page"
+        description="Create a new system page with access controls."
+      />
+
+      {/* Edit Page Dialog */}
+      <PageDialog
+        open={isEditPageDialogOpen}
+        onOpenChange={setIsEditPageDialogOpen}
+        onSave={handleSavePageEdit}
+        title="Edit Page"
+        description="Update page information and settings."
+        initialData={editingPage}
+      />
     </>
+  )
+}
+
+// Reusable Page Dialog Component
+function PageDialog({ 
+  open, 
+  onOpenChange, 
+  onSave, 
+  title, 
+  description, 
+  initialData = null 
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSave: (data: any) => void
+  title: string
+  description: string
+  initialData?: any
+}) {
+  const [formData, setFormData] = useState({
+    name: "",
+    path: "",
+    description: "",
+  })
+
+  // Reset form when dialog opens/closes or initialData changes
+  useEffect(() => {
+    if (open) {
+      if (initialData) {
+        setFormData({
+          name: initialData.name || "",
+          path: initialData.path || "",
+          description: initialData.description || "",
+        })
+      } else {
+        setFormData({
+          name: "",
+          path: "",
+          description: "",
+        })
+      }
+    }
+  }, [open, initialData])
+
+  const handleSave = () => {
+    if (!formData.name || !formData.path) {
+      return // Basic validation
+    }
+    onSave(formData)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="page-name" className="text-right">
+              Name
+            </Label>
+            <Input
+              id="page-name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="col-span-3"
+              placeholder="e.g., Dashboard"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="page-path" className="text-right">
+              Path
+            </Label>
+            <Input
+              id="page-path"
+              value={formData.path}
+              onChange={(e) => setFormData({ ...formData, path: e.target.value })}
+              className="col-span-3"
+              placeholder="e.g., /dashboard"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="page-description" className="text-right pt-2">
+              Description
+            </Label>
+            <Textarea
+              id="page-description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="col-span-3"
+              placeholder="Describe the page's purpose and functionality"
+              rows={3}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={!formData.name || !formData.path}>
+            {initialData ? "Save Changes" : "Add Page"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

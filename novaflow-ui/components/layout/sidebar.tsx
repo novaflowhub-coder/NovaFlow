@@ -20,6 +20,7 @@ import {
   Palette,
   CalendarCheck,
   History,
+  Building,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -32,6 +33,7 @@ const mainNavItems = [
   { href: "/process-monitor", label: "Process Monitor", icon: Monitor },
   { href: "/version-history", label: "Version History", icon: History },
   { href: "/user-management", label: "User Management", icon: Users },
+  { href: "/domain-management", label: "Domain Management", icon: Building },
   { href: "/data-workflow", label: "Data Workflow", icon: Workflow },
 ]
 

@@ -24,6 +24,8 @@ export default function LoginPage() {
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false)
+      // Set authentication token cookie
+      document.cookie = "nf_token=mock_token_12345; path=/; max-age=86400"
       router.push("/dashboard")
     }, 1500)
   }
@@ -33,6 +35,8 @@ export default function LoginPage() {
     // Simulate Okta redirect
     setTimeout(() => {
       setIsOktaLoading(false)
+      // Set authentication token cookie for Okta login
+      document.cookie = "nf_token=okta_token_67890; path=/; max-age=86400"
       router.push("/dashboard")
     }, 1500)
   }

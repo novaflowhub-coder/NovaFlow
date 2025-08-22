@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { ThemeSwitcher } from "@/components/theme-switcher"
+import { DomainSelector } from "@/components/domain-selector"
 
 export function Banner() {
   return (
@@ -30,6 +31,7 @@ export function Banner() {
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
           <div className="w-full flex-1 md:w-auto md:flex-none">{/* Search could go here */}</div>
           <nav className="flex items-center space-x-2">
+            <DomainSelector />
             <ThemeSwitcher />
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-4 w-4" />
