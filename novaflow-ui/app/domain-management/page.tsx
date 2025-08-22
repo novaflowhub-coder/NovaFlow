@@ -17,138 +17,228 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Search, Building, Plus, Edit, Trash, Users, Power, PowerOff } from "lucide-react"
+import { Search, Building, Plus, Edit, Trash, Users, Power, PowerOff, Loader2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
 import { Textarea } from "@/components/ui/textarea"
+import { domainApiService, Domain } from "@/lib/domain-api"
+import { authService } from "@/lib/auth"
 
-// Mock data for domains
-const mockDomains = [
-  {
-    id: "DOM001",
-    name: "Finance",
-    description: "Financial data and processes",
-    code: "FINANCE",
-    isActive: true,
-    userCount: 12,
-    createdBy: "admin",
-    createdDate: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "DOM002", 
-    name: "Human Resources",
-    description: "HR data and employee information",
-    code: "HR",
-    isActive: true,
-    userCount: 8,
-    createdBy: "admin",
-    createdDate: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "DOM003",
-    name: "Sales",
-    description: "Sales data and customer information", 
-    code: "SALES",
-    isActive: true,
-    userCount: 15,
-    createdBy: "admin",
-    createdDate: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "DOM004",
-    name: "Operations",
-    description: "Operational data and processes",
-    code: "OPS",
-    isActive: false,
-    userCount: 5,
-    createdBy: "admin",
-    createdDate: "2024-01-01T00:00:00Z",
-  },
-]
+interface DomainWithUserCount extends Domain {
+  userCount?: number;
+}
 
 export default function DomainManagementPage() {
   const { toast } = useToast()
+  const auth = authService
   const [activeTab, setActiveTab] = useState("domains")
   const [searchQuery, setSearchQuery] = useState("")
   const [isAddDomainDialogOpen, setIsAddDomainDialogOpen] = useState(false)
   const [isEditDomainDialogOpen, setIsEditDomainDialogOpen] = useState(false)
-  const [editingDomain, setEditingDomain] = useState<any>(null)
-  const [domains, setDomains] = useState(mockDomains)
+  const [editingDomain, setEditingDomain] = useState<DomainWithUserCount | null>(null)
+  const [domains, setDomains] = useState<DomainWithUserCount[]>([])
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [hasPermissions, setHasPermissions] = useState<boolean | null>(null)
+
+  // Load domains and check permissions on component mount
+  useEffect(() => {
+    checkPermissionsAndLoadDomains()
+  }, [])
+
+  // Check permissions and load domains
+  const checkPermissionsAndLoadDomains = async () => {
+    try {
+      setLoading(true)
+      
+      // Check if user has domain management permissions
+      const hasPerms = await domainApiService.checkDomainPermissions()
+      setHasPermissions(hasPerms)
+      
+      if (hasPerms) {
+        await loadDomains()
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Access Denied",
+          description: "You don't have permissions for domain management. Please contact your administrator to ensure you have the Administrator role assigned.",
+        })
+      }
+    } catch (error) {
+      console.error('Failed to check permissions:', error)
+      toast({
+        variant: "destructive",
+        title: "Permission Check Failed",
+        description: "Unable to verify your permissions. Please try refreshing the page.",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load domains from API (only called if user has permissions)
+  const loadDomains = async () => {
+    try {
+      const domainsData = await domainApiService.getAllDomains()
+      
+      // Fetch user counts for each domain
+      const domainsWithUserCount = await Promise.all(
+        domainsData.map(async (domain) => {
+          try {
+            const userCount = await domainApiService.getActiveUserCount(domain.id)
+            return { ...domain, userCount }
+          } catch (error) {
+            console.warn(`Failed to fetch user count for domain ${domain.id}:`, error)
+            return { ...domain, userCount: 0 }
+          }
+        })
+      )
+      
+      setDomains(domainsWithUserCount)
+    } catch (error) {
+      console.error('Failed to load domains:', error)
+      toast({
+        variant: "destructive",
+        title: "Error Loading Domains",
+        description: "Failed to load domains. Please try again.",
+      })
+    }
+  }
 
   // Filter domains based on search query
   const filteredDomains = domains.filter((domain) => {
     const matchesSearch =
       domain.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      domain.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      domain.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       domain.code.toLowerCase().includes(searchQuery.toLowerCase())
 
     return matchesSearch
   })
 
   // Handle adding a new domain
-  const handleAddDomain = (formData: any) => {
-    const newDomain = {
-      id: `DOM${String(domains.length + 1).padStart(3, "0")}`,
-      name: formData.name,
-      description: formData.description,
-      code: formData.code.toUpperCase(),
-      isActive: formData.isActive,
-      userCount: 0,
-      createdBy: "current-user",
-      createdDate: new Date().toISOString(),
+  const handleAddDomain = async (formData: any) => {
+    try {
+      setActionLoading('add')
+      const currentUser = auth.getCurrentUser()
+      
+      const newDomainData = {
+        name: formData.name,
+        description: formData.description,
+        code: formData.code.toUpperCase(),
+        isActive: formData.isActive,
+        createdBy: currentUser?.email || 'unknown',
+      }
+      
+      await domainApiService.createDomain(newDomainData)
+      
+      toast({
+        title: "Domain Added",
+        description: `Domain "${formData.name}" has been added successfully.`,
+      })
+      
+      setIsAddDomainDialogOpen(false)
+      await loadDomains() // Reload domains
+    } catch (error) {
+      console.error('Failed to create domain:', error)
+      toast({
+        variant: "destructive",
+        title: "Error Creating Domain",
+        description: error instanceof Error ? error.message : "Failed to create domain. Please try again.",
+      })
+    } finally {
+      setActionLoading(null)
     }
-    
-    setDomains([...domains, newDomain])
-    toast({
-      title: "Domain Added",
-      description: `Domain "${formData.name}" has been added successfully.`,
-    })
-    setIsAddDomainDialogOpen(false)
   }
 
   // Handle editing a domain
-  const handleEditDomain = (domain: any) => {
+  const handleEditDomain = (domain: DomainWithUserCount) => {
     setEditingDomain(domain)
     setIsEditDomainDialogOpen(true)
   }
 
   // Handle saving domain edits
-  const handleSaveDomainEdit = (formData: any) => {
-    setDomains(domains.map(d => 
-      d.id === editingDomain.id 
-        ? { ...d, ...formData, code: formData.code.toUpperCase() }
-        : d
-    ))
-    toast({
-      title: "Domain Updated",
-      description: `Domain "${formData.name}" has been updated successfully.`,
-    })
-    setIsEditDomainDialogOpen(false)
-    setEditingDomain(null)
+  const handleSaveDomainEdit = async (formData: any) => {
+    if (!editingDomain) return
+    
+    try {
+      setActionLoading('edit')
+      
+      const currentUser = auth.getCurrentUser()
+      
+      const updateData = {
+        name: formData.name,
+        description: formData.description,
+        code: formData.code.toUpperCase(),
+        isActive: formData.isActive,
+        createdBy: editingDomain.createdBy, // Preserve original createdBy
+        lastModifiedBy: currentUser?.email || 'unknown',
+      }
+      
+      await domainApiService.updateDomain(editingDomain.id, updateData)
+      
+      toast({
+        title: "Domain Updated",
+        description: `Domain "${formData.name}" has been updated successfully.`,
+      })
+      
+      setIsEditDomainDialogOpen(false)
+      setEditingDomain(null)
+      await loadDomains() // Reload domains
+    } catch (error) {
+      console.error('Failed to update domain:', error)
+      toast({
+        variant: "destructive",
+        title: "Error Updating Domain",
+        description: error instanceof Error ? error.message : "Failed to update domain. Please try again.",
+      })
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   // Handle activating/deactivating a domain
-  const handleToggleDomainStatus = (domainId: string) => {
+  const handleToggleDomainStatus = async (domainId: string) => {
     const domain = domains.find(d => d.id === domainId)
     if (!domain) return
     
-    const newStatus = !domain.isActive
-    const statusText = newStatus ? "activated" : "deactivated"
-    
-    setDomains(domains.map(d => 
-      d.id === domainId ? { ...d, isActive: newStatus } : d
-    ))
-    
-    toast({
-      title: `Domain ${statusText}`,
-      description: `Domain "${domain.name}" has been ${statusText} successfully.`,
-    })
+    try {
+      setActionLoading(`toggle-${domainId}`)
+      const currentUser = auth.getCurrentUser()
+      const modifiedBy = currentUser?.email || 'unknown'
+      
+      const newStatus = !domain.isActive
+      const statusText = newStatus ? "activated" : "deactivated"
+      
+      if (newStatus) {
+        await domainApiService.activateDomain(domainId, modifiedBy)
+      } else {
+        await domainApiService.deactivateDomain(domainId, modifiedBy)
+      }
+      
+      toast({
+        title: `Domain ${statusText}`,
+        description: `Domain "${domain.name}" has been ${statusText} successfully.`,
+      })
+      
+      await loadDomains() // Reload domains
+    } catch (error) {
+      console.error('Failed to toggle domain status:', error)
+      toast({
+        variant: "destructive",
+        title: "Error Updating Domain Status",
+        description: error instanceof Error ? error.message : "Failed to update domain status. Please try again.",
+      })
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   // Handle deleting a domain
-  const handleDeleteDomain = (domainId: string) => {
+  const handleDeleteDomain = async (domainId: string) => {
     const domain = domains.find(d => d.id === domainId)
-    if (domain && domain.userCount > 0) {
+    if (!domain) return
+    
+    if (domain.userCount && domain.userCount > 0) {
       toast({
         title: "Cannot Delete Domain",
         description: "Domain has active users. Please reassign users before deleting.",
@@ -157,11 +247,27 @@ export default function DomainManagementPage() {
       return
     }
     
-    setDomains(domains.filter(d => d.id !== domainId))
-    toast({
-      title: "Domain Deleted",
-      description: "Domain has been deleted successfully.",
-    })
+    try {
+      setActionLoading(`delete-${domainId}`)
+      
+      await domainApiService.deleteDomain(domainId)
+      
+      toast({
+        title: "Domain Deleted",
+        description: "Domain has been deleted successfully.",
+      })
+      
+      await loadDomains() // Reload domains
+    } catch (error) {
+      console.error('Failed to delete domain:', error)
+      toast({
+        variant: "destructive",
+        title: "Error Deleting Domain",
+        description: error instanceof Error ? error.message : "Failed to delete domain. Please try again.",
+      })
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   return (
@@ -170,7 +276,10 @@ export default function DomainManagementPage() {
         title="Domain Management"
         description="Manage domains and domain-specific access controls"
         actions={
-          <Button onClick={() => setIsAddDomainDialogOpen(true)}>
+          <Button 
+            onClick={() => setIsAddDomainDialogOpen(true)}
+            disabled={hasPermissions === false}
+          >
             <Building className="mr-2 h-4 w-4" /> Add Domain
           </Button>
         }
@@ -216,6 +325,16 @@ export default function DomainManagementPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {loading && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center">
+                          <div className="flex items-center justify-center">
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading domains...
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {filteredDomains.map((domain) => (
                       <TableRow key={domain.id}>
                         <TableCell className="font-medium">{domain.name}</TableCell>
@@ -245,25 +364,41 @@ export default function DomainManagementPage() {
                               size="icon" 
                               onClick={() => handleToggleDomainStatus(domain.id)}
                               title={domain.isActive ? "Deactivate Domain" : "Activate Domain"}
+                              disabled={actionLoading === `toggle-${domain.id}`}
                             >
-                              {domain.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                              {actionLoading === `toggle-${domain.id}` ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : domain.isActive ? (
+                                <PowerOff className="h-4 w-4" />
+                              ) : (
+                                <Power className="h-4 w-4" />
+                              )}
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleEditDomain(domain)}>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleEditDomain(domain)}
+                              disabled={!!actionLoading}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="icon" 
                               onClick={() => handleDeleteDomain(domain.id)}
-                              disabled={domain.userCount > 0}
+                              disabled={(domain.userCount || 0) > 0 || actionLoading === `delete-${domain.id}`}
                             >
-                              <Trash className="h-4 w-4" />
+                              {actionLoading === `delete-${domain.id}` ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash className="h-4 w-4" />
+                              )}
                             </Button>
                           </div>
                         </TableCell>
                       </TableRow>
                     ))}
-                    {filteredDomains.length === 0 && (
+                    {!loading && filteredDomains.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={7} className="h-24 text-center">
                           No domains found.
@@ -285,6 +420,7 @@ export default function DomainManagementPage() {
         onSave={handleAddDomain}
         title="Add New Domain"
         description="Create a new business domain for data segregation."
+        loading={actionLoading === 'add'}
       />
 
       {/* Edit Domain Dialog */}
@@ -295,6 +431,7 @@ export default function DomainManagementPage() {
         title="Edit Domain"
         description="Update domain information and settings."
         initialData={editingDomain}
+        loading={actionLoading === 'edit'}
       />
     </>
   )
@@ -307,7 +444,8 @@ function DomainDialog({
   onSave, 
   title, 
   description, 
-  initialData = null 
+  initialData = null,
+  loading = false
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -315,6 +453,7 @@ function DomainDialog({
   title: string
   description: string
   initialData?: any
+  loading?: boolean
 }) {
   const [formData, setFormData] = useState({
     name: "",
@@ -411,11 +550,18 @@ function DomainDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!formData.name || !formData.code}>
-            {initialData ? "Save Changes" : "Add Domain"}
+          <Button onClick={handleSave} disabled={!formData.name || !formData.code || loading}>
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {initialData ? "Saving..." : "Adding..."}
+              </>
+            ) : (
+              initialData ? "Save Changes" : "Add Domain"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
