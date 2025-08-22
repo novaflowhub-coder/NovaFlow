@@ -1,6 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { authService } from "@/lib/auth"
+import { toast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -16,6 +19,93 @@ import type { ApprovalStatus } from "@/lib/types"
 export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeTab, setActiveTab] = useState("rules")
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    const checkAuthorization = async () => {
+      try {
+        setIsLoading(true)
+        
+        // Check if this is an unauthorized redirect
+        const urlParams = new URLSearchParams(window.location.search)
+        const isUnauthorized = urlParams.get('unauthorized') === 'true'
+        
+        if (isUnauthorized) {
+          // Show unauthorized message and clear tokens
+          authService.clearTokensOnly()
+          toast({
+            variant: "destructive",
+            title: "Access Denied",
+            description: "You are not authorized to access this system. Please contact your administrator.",
+          })
+          setIsLoading(false)
+          // Redirect to login after showing message
+          setTimeout(() => {
+            router.push('/login')
+          }, 3000)
+          return
+        }
+        
+        if (!authService.isAuthenticated()) {
+          router.push('/login')
+          return
+        }
+
+        // Fetch user profile to verify database authorization
+        await authService.fetchUserProfile()
+        setIsAuthorized(true)
+      } catch (error) {
+        console.error('Authorization check failed:', error)
+        const errorMessage = (error as Error).message
+        
+        if (errorMessage === 'UNAUTHORIZED_USER') {
+          // Show unauthorized message and clear tokens
+          authService.clearTokensOnly()
+          toast({
+            variant: "destructive",
+            title: "Access Denied",
+            description: "You are not authorized to access this system. Please contact your administrator.",
+          })
+          // Redirect to login after showing message
+          setTimeout(() => {
+            router.push('/login')
+          }, 3000)
+        } else {
+          // For other errors, redirect to login
+          router.push('/login')
+        }
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkAuthorization()
+  }, [router])
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600">Verifying authorization...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthorized) {
+    // Show a loading state while redirect is in progress
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Filter entities based on search term
   const filteredRules = mockRules.filter(
@@ -107,8 +197,8 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{mockRuleSets.length}</div>
             <p className="text-xs text-muted-foreground">
-              {mockRuleSets.filter((rs) => rs.status === "A").length} active,{" "}
-              {mockRuleSets.filter((rs) => rs.status === "I").length} inactive
+              {mockRuleSets.filter((rs) => rs.status === "active").length} active,{" "}
+              {mockRuleSets.filter((rs) => rs.status === "inactive").length} inactive
             </p>
           </CardContent>
         </Card>
@@ -120,8 +210,8 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{mockScaffolds.length}</div>
             <p className="text-xs text-muted-foreground">
-              {mockScaffolds.filter((s) => s.status === "A").length} active,{" "}
-              {mockScaffolds.filter((s) => s.status === "I").length} inactive
+              {mockScaffolds.filter((s) => s.status === "active").length} active,{" "}
+              {mockScaffolds.filter((s) => s.status === "inactive").length} inactive
             </p>
           </CardContent>
         </Card>
@@ -133,8 +223,8 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{mockRunControls.length}</div>
             <p className="text-xs text-muted-foreground">
-              {mockRunControls.filter((rc) => rc.status === "A").length} active,{" "}
-              {mockRunControls.filter((rc) => rc.status === "I").length} inactive
+              {mockRunControls.filter((rc) => rc.status === "active").length} active,{" "}
+              {mockRunControls.filter((rc) => rc.status === "inactive").length} inactive
             </p>
           </CardContent>
         </Card>
@@ -193,12 +283,12 @@ export default function DashboardPage() {
                             <Badge
                               variant="outline"
                               className={
-                                rule.status === "A"
+                                rule.status === "active"
                                   ? "bg-green-50 text-green-700 border-green-200"
                                   : "bg-gray-50 text-gray-700 border-gray-200"
                               }
                             >
-                              {rule.status === "A" ? "Active" : "Inactive"}
+                              {rule.status === "active" ? "Active" : "Inactive"}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -255,12 +345,12 @@ export default function DashboardPage() {
                             <Badge
                               variant="outline"
                               className={
-                                ruleSet.status === "A"
+                                ruleSet.status === "active"
                                   ? "bg-green-50 text-green-700 border-green-200"
                                   : "bg-gray-50 text-gray-700 border-gray-200"
                               }
                             >
-                              {ruleSet.status === "A" ? "Active" : "Inactive"}
+                              {ruleSet.status === "active" ? "Active" : "Inactive"}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -330,12 +420,12 @@ export default function DashboardPage() {
                             <Badge
                               variant="outline"
                               className={
-                                scaffold.status === "A"
+                                scaffold.status === "active"
                                   ? "bg-green-50 text-green-700 border-green-200"
                                   : "bg-gray-50 text-gray-700 border-gray-200"
                               }
                             >
-                              {scaffold.status === "A" ? "Active" : "Inactive"}
+                              {scaffold.status === "active" ? "Active" : "Inactive"}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -403,7 +493,7 @@ export default function DashboardPage() {
                             <Badge
                               variant="outline"
                               className={
-                                runControl.status === "A"
+                                runControl.status === "active"
                                   ? "bg-green-50 text-green-700 border-green-200"
                                   : "bg-gray-50 text-gray-700 border-gray-200"
                               }

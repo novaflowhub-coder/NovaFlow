@@ -35,6 +35,12 @@ public class MeController {
             @RequestParam(required = false) String domainId) {
         
         AuthorizationService.Identity identity = authorizationService.getCurrentIdentity(authentication);
+        
+        // Check if user exists in database - reject if not found
+        if (!authorizationService.userExistsInDatabase(identity.email())) {
+            return ResponseEntity.status(403).build(); // 403 Forbidden - user not authorized
+        }
+        
         Set<String> effectiveRoles = authorizationService.getEffectiveRoles(authentication, domainId);
         List<AuthorizationService.UserPermission> permissions = authorizationService.getAllPermissions(authentication, domainId);
 

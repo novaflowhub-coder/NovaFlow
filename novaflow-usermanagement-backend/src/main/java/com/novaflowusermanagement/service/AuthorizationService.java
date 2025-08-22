@@ -64,29 +64,62 @@ public class AuthorizationService {
     }
 
     /**
+     * Check if user exists in the database by email
+     */
+    public boolean userExistsInDatabase(String email) {
+        if (email == null || email.isEmpty()) {
+            return false;
+        }
+        
+        String sql = "SELECT COUNT(*) FROM user_management.users WHERE email = ? AND is_active = TRUE";
+        
+        try {
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, email);
+            boolean exists = count != null && count > 0;
+            
+            auditLogger.emit("USER_EXISTENCE_CHECK", "USER", email, exists ? "SUCCESS" : "NOT_FOUND", 
+                exists ? "User found in database" : "User not found in database");
+            
+            return exists;
+        } catch (Exception e) {
+            auditLogger.emit("USER_EXISTENCE_CHECK", "USER", email, "ERROR", "Database error: " + e.getMessage());
+            return false; // Fail closed - deny access on database errors
+        }
+    }
+
+    /**
      * Get effective roles for a user from database only - DB-only RBAC
      */
     @Cacheable(value = "userRoles", key = "#authentication.name + ':' + (#domainId != null ? #domainId : 'null')")
     public Set<String> getEffectiveRoles(Authentication authentication, String domainId) {
         Identity identity = getCurrentIdentity(authentication);
         
-        String sql = """
-            SELECT DISTINCT r.name
-            FROM user_management.users u
-            JOIN user_management.user_domain_roles udr ON udr.user_id = u.id AND udr.is_active = TRUE
-            JOIN user_management.roles r ON r.id = udr.role_id
-            WHERE u.email = ?
-            AND (? IS NULL OR udr.domain_id = ?)
-        """;
+        String sql;
+        Object[] params;
+        
+        if (domainId == null) {
+            sql = """
+                SELECT DISTINCT r.name
+                FROM user_management.users u
+                JOIN user_management.user_domain_roles udr ON udr.user_id = u.id AND udr.is_active = TRUE
+                JOIN user_management.roles r ON r.id = udr.role_id
+                WHERE u.email = ?
+            """;
+            params = new Object[]{identity.email()};
+        } else {
+            sql = """
+                SELECT DISTINCT r.name
+                FROM user_management.users u
+                JOIN user_management.user_domain_roles udr ON udr.user_id = u.id AND udr.is_active = TRUE
+                JOIN user_management.roles r ON r.id = udr.role_id
+                WHERE u.email = ?
+                AND udr.domain_id = ?
+            """;
+            params = new Object[]{identity.email(), domainId};
+        }
 
         try {
-            List<String> roles = jdbcTemplate.queryForList(
-                sql, 
-                String.class, 
-                identity.email(), 
-                domainId, 
-                domainId
-            );
+            List<String> roles = jdbcTemplate.queryForList(sql, String.class, params);
             
             auditLogger.emit("ROLE_QUERY", "USER", identity.email(), "SUCCESS", roles.size() + " roles found");
             return new HashSet<>(roles);
