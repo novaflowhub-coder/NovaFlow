@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Bell, Settings, User } from "lucide-react"
+import { Bell, Settings, User, Menu } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,12 +13,34 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { DomainSelector } from "@/components/domain-selector"
+import { authService } from "@/lib/auth"
+import { useRouter } from "next/navigation"
 
-export function Banner() {
+interface BannerProps {
+  toggleSidebar?: () => void
+}
+
+export function Banner({ toggleSidebar }: BannerProps) {
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    await authService.signOut()
+    router.push('/login')
+  }
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
-        <div className="mr-4 flex">
+        <div className="mr-4 flex items-center">
+          {toggleSidebar && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mr-2 md:hidden"
+              onClick={toggleSidebar}
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          )}
           <div className="mr-6 flex items-center space-x-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary via-secondary to-accent text-primary-foreground font-bold text-sm">
               N
@@ -52,7 +74,7 @@ export function Banner() {
                 </DropdownMenuItem>
                 <DropdownMenuItem>Profile</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Log out</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>Log out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </nav>

@@ -2,8 +2,9 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Script from "next/script"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,17 +12,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { authService } from "@/lib/auth"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isOktaLoading, setIsOktaLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [gsiLoaded, setGsiLoaded] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    if (authService.isAuthenticated()) {
+      router.push("/dashboard")
+      return
+    }
+  }, [router])
+
+  const handleGsiLoad = () => {
+    setGsiLoaded(true)
+    // Initialize Google Sign-In after GSI script loads
+    authService.initializeGoogleSignIn().catch((error) => {
+      console.error('Failed to initialize Google Sign-In:', error)
+      setError('Failed to initialize Google Sign-In')
+    })
+  }
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Simulate API call
+    setError(null)
+    
+    // Simulate API call for demo purposes
     setTimeout(() => {
       setIsLoading(false)
       // Set authentication token cookie
@@ -30,20 +53,35 @@ export default function LoginPage() {
     }, 1500)
   }
 
-  const handleOktaLogin = () => {
-    setIsOktaLoading(true)
-    // Simulate Okta redirect
-    setTimeout(() => {
-      setIsOktaLoading(false)
-      // Set authentication token cookie for Okta login
-      document.cookie = "nf_token=okta_token_67890; path=/; max-age=86400"
-      router.push("/dashboard")
-    }, 1500)
+  const handleGoogleLogin = async () => {
+    if (!gsiLoaded) {
+      setError('Google Sign-In is still loading. Please wait.')
+      return
+    }
+    
+    setIsGoogleLoading(true)
+    setError(null)
+    
+    try {
+      // Use the improved AuthService with proper initialization order
+      await authService.signInWithGoogle();
+    } catch (error: any) {
+      console.error('Google sign-in failed:', error)
+      setError(error.message || 'Failed to sign in with Google. Please try again.')
+    } finally {
+      setIsGoogleLoading(false)
+    }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-md">
+    <>
+      <Script 
+        src="https://accounts.google.com/gsi/client" 
+        strategy="afterInteractive"
+        onLoad={handleGsiLoad}
+      />
+      <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+        <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mb-4">
             <svg
@@ -64,6 +102,53 @@ export default function LoginPage() {
           <CardDescription>Enterprise Integration Framework</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+              {error}
+            </div>
+          )}
+
+          {/* Google Sign-In - Primary Method */}
+          <div className="space-y-4">
+            <Button
+              variant="outline"
+              className="w-full bg-white hover:bg-gray-50 border-gray-300"
+              onClick={handleGoogleLogin}
+              disabled={isGoogleLoading}
+            >
+              {isGoogleLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    fill="#EA4335"
+                  />
+                </svg>
+              )}
+              Sign in with Google
+            </Button>
+          </div>
+
+          <div className="my-6 flex items-center">
+            <Separator className="flex-1" />
+            <span className="mx-4 text-xs uppercase text-muted-foreground">Or</span>
+            <Separator className="flex-1" />
+          </div>
+
+          {/* Traditional Login - Secondary Method */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">User ID</Label>
@@ -100,42 +185,14 @@ export default function LoginPage() {
                 Remember me
               </Label>
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading} variant="secondary">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign In
+              Sign In (Demo)
             </Button>
           </form>
-
-          <div className="my-6 flex items-center">
-            <Separator className="flex-1" />
-            <span className="mx-4 text-xs uppercase text-muted-foreground">Or</span>
-            <Separator className="flex-1" />
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full bg-transparent"
-            onClick={handleOktaLogin}
-            disabled={isOktaLoading}
-          >
-            {isOktaLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M12 24C18.6274 24 24 18.6274 24 12C24 5.37258 18.6274 0 12 0C5.37258 0 0 5.37258 0 12C0 18.6274 5.37258 24 12 24Z"
-                  fill="#007DC1"
-                />
-                <path
-                  d="M12.1947 5.43359C8.43993 5.43359 5.43359 8.43993 5.43359 12.1947C5.43359 15.9504 8.43993 18.9557 12.1947 18.9557C15.9504 18.9557 18.9557 15.9504 18.9557 12.1947C18.9557 8.43993 15.9504 5.43359 12.1947 5.43359ZM12.1947 16.943C9.5493 16.943 7.4463 14.84 7.4463 12.1947C7.4463 9.5493 9.5493 7.4463 12.1947 7.4463C14.84 7.4463 16.943 9.5493 16.943 12.1947C16.943 14.84 14.84 16.943 12.1947 16.943Z"
-                  fill="white"
-                />
-              </svg>
-            )}
-            Sign in with Okta SSO
-          </Button>
         </CardContent>
       </Card>
     </div>
+    </>
   )
 }
