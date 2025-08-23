@@ -3,51 +3,54 @@ package com.novaflowusermanagement.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "pages")
-@Schema(description = "Page entity representing application pages for permission management")
+@Schema(description = "Page entity representing application pages", example = "{\"id\": \"PAGE001\", \"name\": \"User Management\", \"path\": \"/user-management\", \"description\": \"Manage users and roles\", \"created_by\": \"system\"}")
 public class Page {
     
     @Id
     @Schema(description = "Unique identifier for the page", example = "PAGE001")
+    @JsonProperty("id")
     private String id;
     
-    @NotBlank
+    @NotBlank(groups = ValidationGroups.OnCreate.class)
     @Schema(description = "Page name", example = "User Management")
+    @JsonProperty("name")
     private String name;
     
-    @NotBlank
+    @NotBlank(groups = ValidationGroups.OnCreate.class)
     @Column(unique = true)
-    @Schema(description = "Page path", example = "/user-management")
+    @Schema(description = "Page path/URL", example = "/user-management")
+    @JsonProperty("path")
     private String path;
     
-    @Schema(description = "Page description", example = "User management and administration page")
+    @Schema(description = "Page description", example = "Manage users and roles")
+    @JsonProperty("description")
     private String description;
     
-    @NotBlank
+    @NotBlank(groups = ValidationGroups.OnCreate.class)
     @Column(name = "created_by")
+    @JsonProperty("created_by")
     @Schema(description = "User who created the page", example = "system")
     private String createdBy;
     
     @Column(name = "created_date")
+    @JsonProperty("created_date")
     @Schema(description = "Date when page was created", example = "2025-08-21T20:00:00")
     private LocalDateTime createdDate;
     
     @Column(name = "last_modified_by")
+    @JsonProperty("last_modified_by")
     @Schema(description = "User who last modified the page", example = "admin")
     private String lastModifiedBy;
     
     @Column(name = "last_modified_date")
+    @JsonProperty("last_modified_date")
     @Schema(description = "Date when page was last modified", example = "2025-08-21T21:00:00")
     private LocalDateTime lastModifiedDate;
-    
-    @OneToMany(mappedBy = "page", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference("page-rolepagepermissions")
-    private List<RolePagePermission> rolePagePermissions;
     
     // Constructors
     public Page() {}
@@ -85,9 +88,6 @@ public class Page {
     
     public LocalDateTime getLastModifiedDate() { return lastModifiedDate; }
     public void setLastModifiedDate(LocalDateTime lastModifiedDate) { this.lastModifiedDate = lastModifiedDate; }
-    
-    public List<RolePagePermission> getRolePagePermissions() { return rolePagePermissions; }
-    public void setRolePagePermissions(List<RolePagePermission> rolePagePermissions) { this.rolePagePermissions = rolePagePermissions; }
     
     @PrePersist
     protected void onCreate() {

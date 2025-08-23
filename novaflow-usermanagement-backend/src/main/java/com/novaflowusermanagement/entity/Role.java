@@ -8,6 +8,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -19,43 +20,57 @@ public class Role {
     
     @Id
     @Schema(description = "Unique identifier for the role", example = "ROLE001")
+    @JsonProperty("id")
     private String id;
     
-    @NotBlank
+    @NotBlank(groups = ValidationGroups.OnCreate.class)
     @Schema(description = "Role name", example = "Finance Manager")
+    @JsonProperty("name")
     private String name;
     
     @Schema(description = "Role description", example = "Manages financial operations and reporting")
+    @JsonProperty("description")
     private String description;
     
-    @NotNull
+    @NotNull(groups = ValidationGroups.OnCreate.class)
+    @Column(name = "domain_id")
+    @JsonProperty("domain_id")
+    @Schema(description = "Domain ID this role belongs to", example = "DOM001")
+    private String domainId;
+    
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "domain_id")
+    @JoinColumn(name = "domain_id", insertable = false, updatable = false)
     @JsonBackReference("domain-roles")
     private Domain domain;
     
     @Column(name = "user_count")
+    @JsonProperty("user_count")
     @Schema(description = "Number of users assigned to this role", example = "5")
     private Integer userCount = 0;
     
     @JdbcTypeCode(SqlTypes.JSON)
     @Schema(description = "JSON object containing role permissions", example = "{\"read\": true, \"write\": true, \"delete\": false}")
+    @JsonProperty("permissions")
     private Map<String, Object> permissions;
     
-    @NotBlank
+    @NotBlank(groups = ValidationGroups.OnCreate.class)
     @Column(name = "created_by")
+    @JsonProperty("created_by")
     @Schema(description = "User who created the role", example = "system")
     private String createdBy;
     
     @Column(name = "created_date")
+    @JsonProperty("created_date")
     @Schema(description = "Date when role was created", example = "2025-08-21T20:00:00")
     private LocalDateTime createdDate;
     
     @Column(name = "updated_by")
+    @JsonProperty("updated_by")
     @Schema(description = "User who last updated the role", example = "admin")
     private String updatedBy;
     
     @Column(name = "updated_date")
+    @JsonProperty("updated_date")
     @Schema(description = "Date when role was last updated", example = "2025-08-21T21:00:00")
     private LocalDateTime updatedDate;
     
@@ -87,6 +102,9 @@ public class Role {
     
     public Domain getDomain() { return domain; }
     public void setDomain(Domain domain) { this.domain = domain; }
+    
+    public String getDomainId() { return domainId; }
+    public void setDomainId(String domainId) { this.domainId = domainId; }
     
     public Integer getUserCount() { return userCount; }
     public void setUserCount(Integer userCount) { this.userCount = userCount; }

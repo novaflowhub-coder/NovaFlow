@@ -40,10 +40,6 @@ public class DomainService {
         return domainRepository.findBySearchTerm(searchTerm);
     }
     
-    public Long getActiveUserCount(String domainId) {
-        return domainRepository.countActiveUsersByDomainId(domainId);
-    }
-    
     public Domain createDomain(Domain domain) {
         if (domain.getId() == null || domain.getId().isEmpty()) {
             domain.setId(UUID.randomUUID().toString());

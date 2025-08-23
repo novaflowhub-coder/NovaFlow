@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RoleRepository extends JpaRepository<Role, String> {
@@ -14,6 +15,8 @@ public interface RoleRepository extends JpaRepository<Role, String> {
     List<Role> findByDomainId(String domainId);
     
     List<Role> findByName(String name);
+    
+    Optional<Role> findByDomainIdAndName(String domainId, String name);
     
     @Query("SELECT r FROM Role r WHERE r.name LIKE %:searchTerm% OR r.description LIKE %:searchTerm%")
     List<Role> findBySearchTerm(@Param("searchTerm") String searchTerm);

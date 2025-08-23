@@ -80,15 +80,8 @@ public class UserController {
     
     @GetMapping("/search")
     @Operation(summary = "Search users", description = "Search users by name, email, or department")
-    public ResponseEntity<List<User>> searchUsers(@Parameter(description = "Search term") @RequestParam String term) {
-        List<User> users = userService.searchUsers(term);
-        return ResponseEntity.ok(users);
-    }
-    
-    @GetMapping("/domain/{domainId}")
-    @Operation(summary = "Get users by domain", description = "Retrieve users assigned to a specific domain")
-    public ResponseEntity<List<User>> getUsersByDomain(@Parameter(description = "Domain ID") @PathVariable String domainId) {
-        List<User> users = userService.getUsersByDomain(domainId);
+    public ResponseEntity<List<User>> searchUsers(@Parameter(description = "Search term") @RequestParam String searchTerm) {
+        List<User> users = userService.searchUsers(searchTerm);
         return ResponseEntity.ok(users);
     }
     
@@ -107,20 +100,28 @@ public class UserController {
         try {
             User createdUser = userService.createUser(user);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
     
     @PutMapping("/{id}")
     @PreAuthorize("@authz.hasPermission(authentication, 'edit', '/user-management')")
     @Operation(summary = "Update user", description = "Update an existing user")
-    public ResponseEntity<User> updateUser(@Parameter(description = "User ID") @PathVariable String id, @Valid @RequestBody User userDetails) {
-        User updatedUser = userService.updateUser(id, userDetails);
-        if (updatedUser != null) {
-            return ResponseEntity.ok(updatedUser);
+    public ResponseEntity<User> updateUser(@Parameter(description = "User ID") @PathVariable String id, @RequestBody User userDetails) {
+        try {
+            User updatedUser = userService.updateUser(id, userDetails);
+            if (updatedUser != null) {
+                return ResponseEntity.ok(updatedUser);
+            }
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
-        return ResponseEntity.notFound().build();
     }
     
     @PutMapping("/{id}/last-login")

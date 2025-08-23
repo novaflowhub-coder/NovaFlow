@@ -1,6 +1,7 @@
 package com.novaflowusermanagement.repository;
 
 import com.novaflowusermanagement.entity.UserDomainRole;
+import com.novaflowusermanagement.dto.UserDomainRoleDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,8 +15,6 @@ public interface UserDomainRoleRepository extends JpaRepository<UserDomainRole, 
     
     List<UserDomainRole> findByUserId(String userId);
     
-    List<UserDomainRole> findByDomainId(String domainId);
-    
     List<UserDomainRole> findByRoleId(String roleId);
     
     List<UserDomainRole> findByIsActive(Boolean isActive);
@@ -23,11 +22,72 @@ public interface UserDomainRoleRepository extends JpaRepository<UserDomainRole, 
     @Query("SELECT udr FROM UserDomainRole udr WHERE udr.user.id = :userId AND udr.isActive = true")
     List<UserDomainRole> findActiveByUserId(@Param("userId") String userId);
     
-    @Query("SELECT udr FROM UserDomainRole udr WHERE udr.domain.id = :domainId AND udr.isActive = true")
-    List<UserDomainRole> findActiveByDomainId(@Param("domainId") String domainId);
+    Optional<UserDomainRole> findByUserIdAndRoleId(String userId, String roleId);
     
-    Optional<UserDomainRole> findByUserIdAndDomainIdAndRoleId(String userId, String domainId, String roleId);
+    // Custom queries to return DTOs with joined data
+    @Query("SELECT new com.novaflowusermanagement.dto.UserDomainRoleDTO(" +
+           "udr.id, udr.user.id, udr.role.id, udr.isActive, udr.assignedBy, udr.assignedDate, " +
+           "u.name, u.email, r.name, r.description, d.name) " +
+           "FROM UserDomainRole udr " +
+           "JOIN udr.user u " +
+           "JOIN udr.role r " +
+           "JOIN r.domain d " +
+           "ORDER BY udr.assignedDate DESC")
+    List<UserDomainRoleDTO> findAllWithJoinedData();
     
-    @Query("SELECT udr FROM UserDomainRole udr WHERE udr.user.id = :userId AND udr.domain.id = :domainId AND udr.isActive = true")
-    List<UserDomainRole> findActiveByUserIdAndDomainId(@Param("userId") String userId, @Param("domainId") String domainId);
+    @Query("SELECT new com.novaflowusermanagement.dto.UserDomainRoleDTO(" +
+           "udr.id, udr.user.id, udr.role.id, udr.isActive, udr.assignedBy, udr.assignedDate, " +
+           "u.name, u.email, r.name, r.description, d.name) " +
+           "FROM UserDomainRole udr " +
+           "JOIN udr.user u " +
+           "JOIN udr.role r " +
+           "JOIN r.domain d " +
+           "WHERE udr.id = :id")
+    Optional<UserDomainRoleDTO> findByIdWithJoinedData(@Param("id") String id);
+    
+    @Query("SELECT new com.novaflowusermanagement.dto.UserDomainRoleDTO(" +
+           "udr.id, udr.user.id, udr.role.id, udr.isActive, udr.assignedBy, udr.assignedDate, " +
+           "u.name, u.email, r.name, r.description, d.name) " +
+           "FROM UserDomainRole udr " +
+           "JOIN udr.user u " +
+           "JOIN udr.role r " +
+           "JOIN r.domain d " +
+           "WHERE udr.user.id = :userId " +
+           "ORDER BY udr.assignedDate DESC")
+    List<UserDomainRoleDTO> findByUserIdWithJoinedData(@Param("userId") String userId);
+    
+    @Query("SELECT new com.novaflowusermanagement.dto.UserDomainRoleDTO(" +
+           "udr.id, udr.user.id, udr.role.id, udr.isActive, udr.assignedBy, udr.assignedDate, " +
+           "u.name, u.email, r.name, r.description, d.name) " +
+           "FROM UserDomainRole udr " +
+           "JOIN udr.user u " +
+           "JOIN udr.role r " +
+           "JOIN r.domain d " +
+           "WHERE udr.role.id = :roleId " +
+           "ORDER BY udr.assignedDate DESC")
+    List<UserDomainRoleDTO> findByRoleIdWithJoinedData(@Param("roleId") String roleId);
+    
+    @Query("SELECT new com.novaflowusermanagement.dto.UserDomainRoleDTO(" +
+           "udr.id, udr.user.id, udr.role.id, udr.isActive, udr.assignedBy, udr.assignedDate, " +
+           "u.name, u.email, r.name, r.description, d.name) " +
+           "FROM UserDomainRole udr " +
+           "JOIN udr.user u " +
+           "JOIN udr.role r " +
+           "JOIN r.domain d " +
+           "WHERE udr.user.id = :userId AND udr.isActive = true " +
+           "ORDER BY udr.assignedDate DESC")
+    List<UserDomainRoleDTO> findActiveByUserIdWithJoinedData(@Param("userId") String userId);
+    
+    @Query("SELECT new com.novaflowusermanagement.dto.UserDomainRoleDTO(" +
+           "udr.id, udr.user.id, udr.role.id, udr.isActive, udr.assignedBy, udr.assignedDate, " +
+           "u.name, u.email, r.name, r.description, d.name) " +
+           "FROM UserDomainRole udr " +
+           "JOIN udr.user u " +
+           "JOIN udr.role r " +
+           "JOIN r.domain d " +
+           "WHERE (LOWER(u.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+           "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+           "   OR LOWER(r.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+           "ORDER BY udr.assignedDate DESC")
+    List<UserDomainRoleDTO> findAllWithJoinedDataBySearch(@Param("searchTerm") String searchTerm);
 }

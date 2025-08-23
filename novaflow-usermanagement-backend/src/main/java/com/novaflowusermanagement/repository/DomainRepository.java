@@ -20,7 +20,4 @@ public interface DomainRepository extends JpaRepository<Domain, String> {
     
     @Query("SELECT d FROM Domain d WHERE d.name LIKE %:searchTerm% OR d.description LIKE %:searchTerm% OR d.code LIKE %:searchTerm%")
     List<Domain> findBySearchTerm(@Param("searchTerm") String searchTerm);
-    
-    @Query("SELECT COUNT(udr) FROM UserDomainRole udr WHERE udr.domain.id = :domainId AND udr.isActive = true")
-    Long countActiveUsersByDomainId(@Param("domainId") String domainId);
 }

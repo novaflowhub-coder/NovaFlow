@@ -3,46 +3,48 @@ package com.novaflowusermanagement.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "permission_types")
-@Schema(description = "Permission type entity representing different types of permissions")
+@Schema(description = "Permission type entity representing different types of permissions", example = "{\"id\": \"PERM001\", \"name\": \"Read\", \"description\": \"Read access permission\", \"created_by\": \"system\"}")
 public class PermissionType {
     
     @Id
     @Schema(description = "Unique identifier for the permission type", example = "PERM001")
+    @JsonProperty("id")
     private String id;
     
-    @NotBlank
-    @Schema(description = "Permission type name", example = "view")
+    @NotBlank(groups = ValidationGroups.OnCreate.class)
+    @Schema(description = "Permission type name", example = "Read")
+    @JsonProperty("name")
     private String name;
     
-    @Schema(description = "Permission type description", example = "View permission allows reading data")
+    @Schema(description = "Permission type description", example = "Read access permission")
+    @JsonProperty("description")
     private String description;
     
-    @NotBlank
+    @NotBlank(groups = ValidationGroups.OnCreate.class)
     @Column(name = "created_by")
+    @JsonProperty("created_by")
     @Schema(description = "User who created the permission type", example = "system")
     private String createdBy;
     
     @Column(name = "created_date")
+    @JsonProperty("created_date")
     @Schema(description = "Date when permission type was created", example = "2025-08-21T20:00:00")
     private LocalDateTime createdDate;
     
     @Column(name = "last_modified_by")
+    @JsonProperty("last_modified_by")
     @Schema(description = "User who last modified the permission type", example = "admin")
     private String lastModifiedBy;
     
     @Column(name = "last_modified_date")
+    @JsonProperty("last_modified_date")
     @Schema(description = "Date when permission type was last modified", example = "2025-08-21T21:00:00")
     private LocalDateTime lastModifiedDate;
-    
-    @OneToMany(mappedBy = "permissionType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference("permissiontype-rolepagepermissions")
-    private List<RolePagePermission> rolePagePermissions;
     
     // Constructors
     public PermissionType() {}
@@ -76,9 +78,6 @@ public class PermissionType {
     
     public LocalDateTime getLastModifiedDate() { return lastModifiedDate; }
     public void setLastModifiedDate(LocalDateTime lastModifiedDate) { this.lastModifiedDate = lastModifiedDate; }
-    
-    public List<RolePagePermission> getRolePagePermissions() { return rolePagePermissions; }
-    public void setRolePagePermissions(List<RolePagePermission> rolePagePermissions) { this.rolePagePermissions = rolePagePermissions; }
     
     @PrePersist
     protected void onCreate() {

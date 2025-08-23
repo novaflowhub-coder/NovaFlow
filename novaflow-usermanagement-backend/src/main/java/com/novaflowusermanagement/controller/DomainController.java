@@ -75,13 +75,6 @@ public class DomainController {
         return ResponseEntity.ok(domains);
     }
     
-    @GetMapping("/{id}/user-count")
-    @Operation(summary = "Get active user count", description = "Get the number of active users in a domain")
-    public ResponseEntity<Long> getActiveUserCount(@Parameter(description = "Domain ID") @PathVariable String id) {
-        Long count = domainService.getActiveUserCount(id);
-        return ResponseEntity.ok(count);
-    }
-    
     @PostMapping
     @Operation(summary = "Create domain", description = "Create a new domain")
     @ApiResponse(responseCode = "201", description = "Domain created successfully")
@@ -115,13 +108,14 @@ public class DomainController {
     }
     
     @PutMapping("/{id}/deactivate")
-    @Operation(summary = "Deactivate domain", description = "Deactivate a domain")
+    @Operation(summary = "Deactivate domain", description = "Deactivate a domain by ID")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Domain deactivated successfully"),
+        @ApiResponse(responseCode = "404", description = "Domain not found")
+    })
     public ResponseEntity<Domain> deactivateDomain(@Parameter(description = "Domain ID") @PathVariable String id, @RequestParam String modifiedBy) {
         Domain domain = domainService.deactivateDomain(id, modifiedBy);
-        if (domain != null) {
-            return ResponseEntity.ok(domain);
-        }
-        return ResponseEntity.notFound().build();
+        return domain != null ? ResponseEntity.ok(domain) : ResponseEntity.notFound().build();
     }
     
     @DeleteMapping("/{id}")

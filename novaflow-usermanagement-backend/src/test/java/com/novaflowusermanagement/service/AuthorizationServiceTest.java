@@ -88,11 +88,11 @@ class AuthorizationServiceTest {
         when(jwtAuthenticationToken.getToken()).thenReturn(jwt);
         when(jwt.getClaimAsString("sub")).thenReturn("user123");
         when(jwt.getClaimAsString("email")).thenReturn("user@company.com");
-        when(jdbcTemplate.queryForList(anyString(), eq(String.class), eq("user@company.com"), eq("DOM001"), eq("DOM001")))
+        when(jdbcTemplate.queryForList(anyString(), eq(String.class), any(Object[].class)))
                 .thenThrow(new RuntimeException("Database error"));
 
         // Act
-        Set<String> roles = authorizationService.getEffectiveRoles(jwtAuthenticationToken, "DOM001");
+        Set<String> roles = authorizationService.getEffectiveRoles(jwtAuthenticationToken);
 
         // Assert
         assertTrue(roles.isEmpty());
@@ -105,11 +105,11 @@ class AuthorizationServiceTest {
         when(jwtAuthenticationToken.getToken()).thenReturn(jwt);
         when(jwt.getClaimAsString("sub")).thenReturn("user123");
         when(jwt.getClaimAsString("email")).thenReturn("user@company.com");
-        when(jdbcTemplate.queryForList(anyString(), eq(String.class), eq("user@company.com"), eq("DOM001"), eq("DOM001")))
+        when(jdbcTemplate.queryForList(anyString(), eq(String.class), any(Object[].class)))
                 .thenReturn(Arrays.asList("admin", "viewer"));
 
         // Act
-        Set<String> roles = authorizationService.getEffectiveRoles(jwtAuthenticationToken, "DOM001");
+        Set<String> roles = authorizationService.getEffectiveRoles(jwtAuthenticationToken);
 
         // Assert
         assertEquals(Set.of("admin", "viewer"), roles);
@@ -122,11 +122,11 @@ class AuthorizationServiceTest {
         when(jwtAuthenticationToken.getToken()).thenReturn(jwt);
         when(jwt.getClaimAsString("sub")).thenReturn("user123");
         when(jwt.getClaimAsString("email")).thenReturn("user@company.com");
-        when(jdbcTemplate.queryForList(anyString(), eq(String.class), eq("user@company.com"), eq("DOM001"), eq("DOM001")))
+        when(jdbcTemplate.queryForList(anyString(), eq(String.class), any(Object[].class)))
                 .thenReturn(Collections.emptyList());
 
         // Act
-        Set<String> roles = authorizationService.getEffectiveRoles(jwtAuthenticationToken, "DOM001");
+        Set<String> roles = authorizationService.getEffectiveRoles(jwtAuthenticationToken);
 
         // Assert
         assertTrue(roles.isEmpty());
@@ -139,13 +139,13 @@ class AuthorizationServiceTest {
         when(jwtAuthenticationToken.getToken()).thenReturn(jwt);
         when(jwt.getClaimAsString("sub")).thenReturn("user123");
         when(jwt.getClaimAsString("email")).thenReturn("user@company.com");
-        when(jdbcTemplate.queryForList(anyString(), eq(String.class), eq("user@company.com"), eq("DOM001"), eq("DOM001")))
+        when(jdbcTemplate.queryForList(anyString(), eq(String.class), any(Object[].class)))
                 .thenReturn(Arrays.asList("admin", "viewer"));
         when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), anyString(), anyString(), any()))
                 .thenReturn(true);
 
         // Act
-        boolean hasPermission = authorizationService.hasPermission(jwtAuthenticationToken, "view", "/dashboard", "DOM001");
+        boolean hasPermission = authorizationService.hasPermission(jwtAuthenticationToken, "view", "/dashboard");
 
         // Assert
         assertTrue(hasPermission);
@@ -158,13 +158,13 @@ class AuthorizationServiceTest {
         when(jwtAuthenticationToken.getToken()).thenReturn(jwt);
         when(jwt.getClaimAsString("sub")).thenReturn("user123");
         when(jwt.getClaimAsString("email")).thenReturn("user@company.com");
-        when(jdbcTemplate.queryForList(anyString(), eq(String.class), eq("user@company.com"), eq("DOM001"), eq("DOM001")))
+        when(jdbcTemplate.queryForList(anyString(), eq(String.class), any(Object[].class)))
                 .thenReturn(Arrays.asList("viewer"));
         when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), anyString(), anyString(), any()))
                 .thenReturn(false);
 
         // Act
-        boolean hasPermission = authorizationService.hasPermission(jwtAuthenticationToken, "edit", "/dashboard", "DOM001");
+        boolean hasPermission = authorizationService.hasPermission(jwtAuthenticationToken, "edit", "/dashboard");
 
         // Assert
         assertFalse(hasPermission);
@@ -177,11 +177,11 @@ class AuthorizationServiceTest {
         when(jwtAuthenticationToken.getToken()).thenReturn(jwt);
         when(jwt.getClaimAsString("sub")).thenReturn("user123");
         when(jwt.getClaimAsString("email")).thenReturn("user@company.com");
-        when(jdbcTemplate.queryForList(anyString(), eq(String.class), eq("user@company.com"), eq("DOM001"), eq("DOM001")))
+        when(jdbcTemplate.queryForList(anyString(), eq(String.class), any(Object[].class)))
                 .thenThrow(new RuntimeException("Database error"));
 
         // Act
-        boolean hasPermission = authorizationService.hasPermission(jwtAuthenticationToken, "view", "/dashboard", "DOM001");
+        boolean hasPermission = authorizationService.hasPermission(jwtAuthenticationToken, "view", "/dashboard");
 
         // Assert
         assertFalse(hasPermission);

@@ -54,15 +54,13 @@ CREATE TABLE users (
 CREATE TABLE user_domain_roles (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    domain_id TEXT NOT NULL,
     role_id TEXT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT true,
     assigned_by TEXT NOT NULL,
     assigned_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (domain_id) REFERENCES domains(id),
     FOREIGN KEY (role_id) REFERENCES roles(id),
-    UNIQUE(user_id, domain_id, role_id)
+    UNIQUE(user_id, role_id)
 );
 
 -- Page Permissions

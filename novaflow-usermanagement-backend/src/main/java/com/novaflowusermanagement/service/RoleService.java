@@ -41,6 +41,20 @@ public class RoleService {
     }
     
     public Role createRole(Role role) {
+        // Validate required fields
+        if (role.getName() == null || role.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Role name is required");
+        }
+        if (role.getDomainId() == null || role.getDomainId().trim().isEmpty()) {
+            throw new IllegalArgumentException("Domain ID is required");
+        }
+        
+        // Check for duplicate role name within the same domain
+        Optional<Role> existingRole = roleRepository.findByDomainIdAndName(role.getDomainId(), role.getName());
+        if (existingRole.isPresent()) {
+            throw new IllegalArgumentException("Role with this name already exists in the domain");
+        }
+        
         if (role.getId() == null || role.getId().isEmpty()) {
             role.setId(UUID.randomUUID().toString());
         }
@@ -52,9 +66,24 @@ public class RoleService {
         Optional<Role> optionalRole = roleRepository.findById(id);
         if (optionalRole.isPresent()) {
             Role role = optionalRole.get();
+            
+            // Validate required fields
+            if (roleDetails.getName() == null || roleDetails.getName().trim().isEmpty()) {
+                throw new IllegalArgumentException("Role name is required");
+            }
+            if (roleDetails.getDomainId() == null || roleDetails.getDomainId().trim().isEmpty()) {
+                throw new IllegalArgumentException("Domain ID is required");
+            }
+            
+            // Check for duplicate role name within the same domain (excluding current role)
+            Optional<Role> existingRole = roleRepository.findByDomainIdAndName(roleDetails.getDomainId(), roleDetails.getName());
+            if (existingRole.isPresent() && !existingRole.get().getId().equals(id)) {
+                throw new IllegalArgumentException("Role with this name already exists in the domain");
+            }
+            
             role.setName(roleDetails.getName());
             role.setDescription(roleDetails.getDescription());
-            role.setDomain(roleDetails.getDomain());
+            role.setDomainId(roleDetails.getDomainId());
             role.setPermissions(roleDetails.getPermissions());
             role.setUpdatedBy(roleDetails.getUpdatedBy());
             role.setUpdatedDate(LocalDateTime.now());

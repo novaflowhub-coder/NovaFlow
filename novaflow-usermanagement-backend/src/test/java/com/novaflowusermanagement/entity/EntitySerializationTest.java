@@ -100,7 +100,6 @@ public class EntitySerializationTest {
         UserDomainRole userDomainRole = new UserDomainRole();
         userDomainRole.setId("UDR001");
         userDomainRole.setUser(user);
-        userDomainRole.setDomain(domain);
         userDomainRole.setRole(role);
         userDomainRole.setIsActive(true);
         userDomainRole.setAssignedBy("system");

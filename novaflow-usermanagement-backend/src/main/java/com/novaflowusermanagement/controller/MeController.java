@@ -1,7 +1,6 @@
 package com.novaflowusermanagement.controller;
 
 import com.novaflowusermanagement.service.AuthorizationService;
-import com.novaflowusermanagement.service.AuthorizationService.UserPermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -11,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -30,9 +28,7 @@ public class MeController {
     )
     @ApiResponse(responseCode = "200", description = "User identity retrieved successfully")
     @ApiResponse(responseCode = "401", description = "User not authenticated")
-    public ResponseEntity<UserProfileResponse> getCurrentUser(
-            Authentication authentication,
-            @RequestParam(required = false) String domainId) {
+    public ResponseEntity<UserProfileResponse> getCurrentUser(Authentication authentication) {
         
         AuthorizationService.Identity identity = authorizationService.getCurrentIdentity(authentication);
         
@@ -41,8 +37,8 @@ public class MeController {
             return ResponseEntity.status(403).build(); // 403 Forbidden - user not authorized
         }
         
-        Set<String> effectiveRoles = authorizationService.getEffectiveRoles(authentication, domainId);
-        List<AuthorizationService.UserPermission> permissions = authorizationService.getAllPermissions(authentication, domainId);
+        Set<String> effectiveRoles = authorizationService.getEffectiveRoles(authentication);
+        List<AuthorizationService.UserPermission> permissions = authorizationService.getAllPermissions(authentication);
 
         // Google OIDC: Return identity with DB-derived roles and permissions only
         UserProfileResponse response = new UserProfileResponse(
@@ -73,8 +69,7 @@ public class MeController {
         boolean allowed = authorizationService.hasPermission(
             authentication,
             request.getPermissionName(),
-            request.getPagePath(),
-            request.getDomainId()
+            request.getPagePath()
         );
 
         return ResponseEntity.ok(new AuthorizationResponse(allowed));
@@ -117,16 +112,12 @@ public class MeController {
         @Schema(description = "Permission name to check", example = "view", required = true)
         private String permissionName;
 
-        @Schema(description = "Domain ID for context", example = "DOM001")
-        private String domainId;
-
         // Constructors
         public AuthorizationRequest() {}
 
-        public AuthorizationRequest(String pagePath, String permissionName, String domainId) {
+        public AuthorizationRequest(String pagePath, String permissionName) {
             this.pagePath = pagePath;
             this.permissionName = permissionName;
-            this.domainId = domainId;
         }
 
         // Getters and setters
@@ -135,9 +126,6 @@ public class MeController {
 
         public String getPermissionName() { return permissionName; }
         public void setPermissionName(String permissionName) { this.permissionName = permissionName; }
-
-        public String getDomainId() { return domainId; }
-        public void setDomainId(String domainId) { this.domainId = domainId; }
     }
 
     @Schema(description = "Authorization response indicating if action is allowed")

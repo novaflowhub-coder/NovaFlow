@@ -82,19 +82,27 @@ public class RoleController {
         try {
             Role createdRole = roleService.createRole(role);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdRole);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
     
     @PutMapping("/{id}")
     @Operation(summary = "Update role", description = "Update an existing role")
-    public ResponseEntity<Role> updateRole(@Parameter(description = "Role ID") @PathVariable String id, @Valid @RequestBody Role roleDetails) {
-        Role updatedRole = roleService.updateRole(id, roleDetails);
-        if (updatedRole != null) {
-            return ResponseEntity.ok(updatedRole);
+    public ResponseEntity<Role> updateRole(@Parameter(description = "Role ID") @PathVariable String id, @RequestBody Role roleDetails) {
+        try {
+            Role updatedRole = roleService.updateRole(id, roleDetails);
+            if (updatedRole != null) {
+                return ResponseEntity.ok(updatedRole);
+            }
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
-        return ResponseEntity.notFound().build();
     }
     
     @PutMapping("/{id}/user-count")

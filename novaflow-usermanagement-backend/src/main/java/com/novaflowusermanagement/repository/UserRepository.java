@@ -23,9 +23,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query("SELECT u FROM User u WHERE u.name LIKE %:searchTerm% OR u.email LIKE %:searchTerm% OR u.department LIKE %:searchTerm%")
     List<User> findBySearchTerm(@Param("searchTerm") String searchTerm);
     
-    @Query("SELECT u FROM User u JOIN u.userDomainRoles udr WHERE udr.domain.id = :domainId AND udr.isActive = true")
-    List<User> findByDomainId(@Param("domainId") String domainId);
-    
     @Query("SELECT u FROM User u JOIN u.userDomainRoles udr WHERE udr.role.id = :roleId AND udr.isActive = true")
     List<User> findByRoleId(@Param("roleId") String roleId);
 }

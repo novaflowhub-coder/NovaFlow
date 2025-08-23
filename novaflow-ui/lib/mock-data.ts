@@ -113,6 +113,7 @@ export const mockConnections: Connection[] = [
     type: "API",
     host: "reg-api.bank.internal",
     port: 443,
+    username: "",
     baseUrl: "https://reg-api.bank.internal/v1",
     description: "API for regulatory reporting submissions",
     isActive: true,
@@ -164,7 +165,6 @@ export const mockObjects: IntegrationObject[] = [
     id: "OBJ001",
     name: "Daily Cash Position",
     type: "Table",
-    connectionId: "CONN001",
     tableName: "DAILY_CASH_POSITION",
     description: "Daily cash position data from treasury system",
     schema: [
@@ -654,7 +654,7 @@ export const mockScaffolds: Scaffold[] = [
       },
     ],
     approvalDetails: {
-      status: "Draft",
+      status: "Pending",
     },
     aggregations: [],
     filters: [{ id: "flt-5", column: "settlement_date", operator: "equals", value: "TODAY()" }],
@@ -762,7 +762,7 @@ export const mockRunControls: RunControl[] = [
     id: "RC001",
     name: "End of Day Processing",
     description: "Daily end-of-day treasury processing workflow",
-    triggerType: "Schedule",
+    triggerType: "Scheduled",
     scheduleExpression: "0 18 * * MON-FRI",
     holidayCalendarId: "CAL001",
     steps: [
@@ -796,7 +796,7 @@ export const mockRunControls: RunControl[] = [
     id: "RC002",
     name: "Regulatory Report Generation",
     description: "Weekly regulatory report generation",
-    triggerType: "Schedule",
+    triggerType: "Scheduled",
     scheduleExpression: "0 9 * * FRI",
     holidayCalendarId: "CAL001",
     steps: [

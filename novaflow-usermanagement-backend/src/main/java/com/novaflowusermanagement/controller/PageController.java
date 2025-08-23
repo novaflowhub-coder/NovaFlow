@@ -10,105 +10,120 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/pages")
-@CrossOrigin(origins = "*")
-@Tag(name = "Page Management", description = "APIs for managing application pages and their permissions")
+@Tag(name = "Pages", description = "Page management operations")
 public class PageController {
 
     @Autowired
     private PageService pageService;
 
     @GetMapping
-    @PreAuthorize("@authz.hasPermission(authentication, 'view', '/page-management')")
-    @Operation(summary = "Get all pages", description = "Retrieve all application pages")
-    @ApiResponse(responseCode = "200", description = "Successfully retrieved pages")
-    public ResponseEntity<List<Page>> getAllPages() {
-        List<Page> pages = pageService.getAllPages();
-        return ResponseEntity.ok(pages);
+    @Operation(summary = "Get all pages", description = "Retrieve all pages with optional search")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved pages")
+    })
+    public ResponseEntity<List<Page>> getAllPages(
+            @Parameter(description = "Search term to filter pages") 
+            @RequestParam(required = false) String search) {
+        try {
+            List<Page> pages;
+            if (search != null && !search.trim().isEmpty()) {
+                pages = pageService.searchPages(search);
+            } else {
+                pages = pageService.getAllPages();
+            }
+            return ResponseEntity.ok(pages);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'view', '/page-management')")
     @Operation(summary = "Get page by ID", description = "Retrieve a specific page by its ID")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Page found"),
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved page"),
         @ApiResponse(responseCode = "404", description = "Page not found")
     })
-    public ResponseEntity<Page> getPageById(@Parameter(description = "Page ID") @PathVariable String id) {
-        Optional<Page> page = pageService.getPageById(id);
-        return page.map(ResponseEntity::ok)
-                  .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/path/{path}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'view', '/page-management')")
-    @Operation(summary = "Get page by path", description = "Retrieve a page by its path")
-    public ResponseEntity<Page> getPageByPath(@Parameter(description = "Page path") @PathVariable String path) {
-        // URL decode the path parameter
-        String decodedPath = java.net.URLDecoder.decode(path, java.nio.charset.StandardCharsets.UTF_8);
-        Optional<Page> page = pageService.getPageByPath(decodedPath);
-        return page.map(ResponseEntity::ok)
-                  .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/search")
-    @PreAuthorize("@authz.hasPermission(authentication, 'view', '/page-management')")
-    @Operation(summary = "Search pages", description = "Search pages by name, path, or description")
-    public ResponseEntity<List<Page>> searchPages(@Parameter(description = "Search term") @RequestParam String term) {
-        List<Page> pages = pageService.searchPages(term);
-        return ResponseEntity.ok(pages);
+    public ResponseEntity<Page> getPageById(
+            @Parameter(description = "Page ID") 
+            @PathVariable String id) {
+        try {
+            Optional<Page> page = pageService.getPageById(id);
+            return page.map(ResponseEntity::ok)
+                      .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @PostMapping
-    @PreAuthorize("@authz.hasPermission(authentication, 'edit', '/page-management')")
-    @Operation(summary = "Create page", description = "Create a new application page")
-    @ApiResponse(responseCode = "201", description = "Page created successfully")
-    public ResponseEntity<Page> createPage(@Valid @RequestBody Page page) {
+    @Operation(summary = "Create new page", description = "Create a new page")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Page created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data")
+    })
+    public ResponseEntity<?> createPage(@RequestBody Page page) {
         try {
             Page createdPage = pageService.createPage(page);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdPage);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create page");
         }
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'edit', '/page-management')")
     @Operation(summary = "Update page", description = "Update an existing page")
-    public ResponseEntity<Page> updatePage(@Parameter(description = "Page ID") @PathVariable String id, 
-                                          @Valid @RequestBody Page pageDetails) {
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Page updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "404", description = "Page not found")
+    })
+    public ResponseEntity<?> updatePage(
+            @Parameter(description = "Page ID") 
+            @PathVariable String id, 
+            @RequestBody Page pageDetails) {
         try {
             Page updatedPage = pageService.updatePage(id, pageDetails);
-            if (updatedPage != null) {
-                return ResponseEntity.ok(updatedPage);
-            }
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(updatedPage);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update page");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update page");
         }
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'delete', '/page-management')")
-    @Operation(summary = "Delete page", description = "Delete a page")
-    @ApiResponse(responseCode = "204", description = "Page deleted successfully")
-    public ResponseEntity<Void> deletePage(@Parameter(description = "Page ID") @PathVariable String id) {
-        boolean deleted = pageService.deletePage(id);
-        if (deleted) {
+    @Operation(summary = "Delete page", description = "Delete a page by ID")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Page deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "Page not found")
+    })
+    public ResponseEntity<?> deletePage(
+            @Parameter(description = "Page ID") 
+            @PathVariable String id) {
+        try {
+            pageService.deletePage(id);
             return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to delete page");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to delete page");
         }
-        return ResponseEntity.notFound().build();
     }
 }

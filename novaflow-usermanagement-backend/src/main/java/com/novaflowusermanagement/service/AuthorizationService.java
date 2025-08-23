@@ -1,7 +1,5 @@
 package com.novaflowusermanagement.service;
 
-import com.novaflowusermanagement.entity.User;
-import com.novaflowusermanagement.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
@@ -13,17 +11,12 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service("authz")
 public class AuthorizationService {
 
     // Identity record for Google OIDC
     public record Identity(String sub, String email) {}
-
-    @Autowired
-    private UserRepository userRepository;
-
 
     @Autowired
     private AuditLogger auditLogger;
@@ -90,33 +83,18 @@ public class AuthorizationService {
     /**
      * Get effective roles for a user from database only - DB-only RBAC
      */
-    @Cacheable(value = "userRoles", key = "#authentication.name + ':' + (#domainId != null ? #domainId : 'null')")
-    public Set<String> getEffectiveRoles(Authentication authentication, String domainId) {
+    @Cacheable(value = "userRoles", key = "#authentication.name")
+    public Set<String> getEffectiveRoles(Authentication authentication) {
         Identity identity = getCurrentIdentity(authentication);
         
-        String sql;
-        Object[] params;
-        
-        if (domainId == null) {
-            sql = """
-                SELECT DISTINCT r.name
-                FROM user_management.users u
-                JOIN user_management.user_domain_roles udr ON udr.user_id = u.id AND udr.is_active = TRUE
-                JOIN user_management.roles r ON r.id = udr.role_id
-                WHERE u.email = ?
-            """;
-            params = new Object[]{identity.email()};
-        } else {
-            sql = """
-                SELECT DISTINCT r.name
-                FROM user_management.users u
-                JOIN user_management.user_domain_roles udr ON udr.user_id = u.id AND udr.is_active = TRUE
-                JOIN user_management.roles r ON r.id = udr.role_id
-                WHERE u.email = ?
-                AND udr.domain_id = ?
-            """;
-            params = new Object[]{identity.email(), domainId};
-        }
+        String sql = """
+            SELECT DISTINCT r.name
+            FROM user_management.users u
+            JOIN user_management.user_domain_roles udr ON udr.user_id = u.id AND udr.is_active = TRUE
+            JOIN user_management.roles r ON r.id = udr.role_id
+            WHERE u.email = ?
+        """;
+        Object[] params = new Object[]{identity.email()};
 
         try {
             List<String> roles = jdbcTemplate.queryForList(sql, String.class, params);
@@ -132,11 +110,11 @@ public class AuthorizationService {
     /**
      * Check if user has specific permission for a page - DB-only RBAC
      */
-    @Cacheable(value = "userPermissions", key = "#authentication.name + ':' + #pagePath + ':' + #permissionName + ':' + (#domainId != null ? #domainId : 'null')")
-    public boolean hasPermission(Authentication authentication, String permissionName, String pagePath, String domainId) {
+    @Cacheable(value = "userPermissions", key = "#authentication.name + ':' + #pagePath + ':' + #permissionName")
+    public boolean hasPermission(Authentication authentication, String permissionName, String pagePath) {
         try {
             // First get user's effective roles
-            Set<String> roles = getEffectiveRoles(authentication, domainId);
+            Set<String> roles = getEffectiveRoles(authentication);
             if (roles.isEmpty()) {
                 Identity identity = getCurrentIdentity(authentication);
                 auditLogger.emit("PERMISSION_CHECK", "USER", identity.email(), "DENIED", "No roles found for user");
@@ -185,19 +163,12 @@ public class AuthorizationService {
     }
 
     /**
-     * Overloaded method without domainId
+     * Get all permissions for a user across all pages 
      */
-    public boolean hasPermission(Authentication auth, String permissionName, String pagePath) {
-        return hasPermission(auth, permissionName, pagePath, null);
-    }
-
-    /**
-     * Get all permissions for a user across all pages for a domain - used by /me endpoint
-     */
-    @Cacheable(value = "userAllPermissions", key = "#authentication.name + ':' + (#domainId != null ? #domainId : 'null')")
-    public List<UserPermission> getAllPermissions(Authentication authentication, String domainId) {
+    @Cacheable(value = "userAllPermissions", key = "#authentication.name")
+    public List<UserPermission> getAllPermissions(Authentication authentication) {
         try {
-            Set<String> roles = getEffectiveRoles(authentication, domainId);
+            Set<String> roles = getEffectiveRoles(authentication);
             if (roles.isEmpty()) {
                 return new ArrayList<>();
             }

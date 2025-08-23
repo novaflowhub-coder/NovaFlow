@@ -4,21 +4,17 @@ import com.novaflowusermanagement.entity.Page;
 import com.novaflowusermanagement.repository.PageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
-@Transactional
 public class PageService {
 
     @Autowired
     private PageRepository pageRepository;
-
-    @Autowired
-    private AuditLogger auditLogger;
 
     public List<Page> getAllPages() {
         return pageRepository.findAll();
@@ -28,73 +24,75 @@ public class PageService {
         return pageRepository.findById(id);
     }
 
-    public Optional<Page> getPageByPath(String path) {
-        return pageRepository.findByPath(path);
+    public List<Page> searchPages(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getAllPages();
+        }
+        return pageRepository.findBySearchTerm(searchTerm.trim());
     }
 
     public Page createPage(Page page) {
-        if (pageRepository.existsByPath(page.getPath())) {
-            throw new IllegalArgumentException("Page with path '" + page.getPath() + "' already exists");
+        // Validate required fields
+        if (page.getName() == null || page.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Page name is required");
+        }
+        if (page.getPath() == null || page.getPath().trim().isEmpty()) {
+            throw new IllegalArgumentException("Page path is required");
+        }
+        if (page.getCreatedBy() == null || page.getCreatedBy().trim().isEmpty()) {
+            throw new IllegalArgumentException("Created by is required");
         }
         
+        // Check for duplicate path
+        Optional<Page> existingPage = pageRepository.findByPath(page.getPath());
+        if (existingPage.isPresent()) {
+            throw new IllegalArgumentException("Page with this path already exists");
+        }
+        
+        if (page.getId() == null || page.getId().isEmpty()) {
+            page.setId(UUID.randomUUID().toString());
+        }
         page.setCreatedDate(LocalDateTime.now());
-        Page savedPage = pageRepository.save(page);
         
-        auditLogger.emit("PAGE_CREATED", "PAGE", savedPage.getId(), "SUCCESS", 
-            "Page created: " + savedPage.getName() + " (" + savedPage.getPath() + ")");
-        
-        return savedPage;
+        return pageRepository.save(page);
     }
 
     public Page updatePage(String id, Page pageDetails) {
-        Optional<Page> existingPageOpt = pageRepository.findById(id);
-        if (existingPageOpt.isEmpty()) {
-            return null;
-        }
-
-        Page existingPage = existingPageOpt.get();
-        
-        // Check if path is being changed and if new path already exists
-        if (!existingPage.getPath().equals(pageDetails.getPath()) && 
-            pageRepository.existsByPath(pageDetails.getPath())) {
-            throw new IllegalArgumentException("Page with path '" + pageDetails.getPath() + "' already exists");
-        }
-
-        existingPage.setName(pageDetails.getName());
-        existingPage.setPath(pageDetails.getPath());
-        existingPage.setDescription(pageDetails.getDescription());
-        existingPage.setLastModifiedBy(pageDetails.getLastModifiedBy());
-        existingPage.setLastModifiedDate(LocalDateTime.now());
-
-        Page updatedPage = pageRepository.save(existingPage);
-        
-        auditLogger.emit("PAGE_UPDATED", "PAGE", updatedPage.getId(), "SUCCESS", 
-            "Page updated: " + updatedPage.getName() + " (" + updatedPage.getPath() + ")");
-        
-        return updatedPage;
-    }
-
-    public boolean deletePage(String id) {
-        if (pageRepository.existsById(id)) {
-            Optional<Page> pageOpt = pageRepository.findById(id);
-            pageRepository.deleteById(id);
+        Optional<Page> optionalPage = pageRepository.findById(id);
+        if (optionalPage.isPresent()) {
+            Page page = optionalPage.get();
             
-            if (pageOpt.isPresent()) {
-                Page page = pageOpt.get();
-                auditLogger.emit("PAGE_DELETED", "PAGE", id, "SUCCESS", 
-                    "Page deleted: " + page.getName() + " (" + page.getPath() + ")");
+            // Validate required fields
+            if (pageDetails.getName() == null || pageDetails.getName().trim().isEmpty()) {
+                throw new IllegalArgumentException("Page name is required");
+            }
+            if (pageDetails.getPath() == null || pageDetails.getPath().trim().isEmpty()) {
+                throw new IllegalArgumentException("Page path is required");
             }
             
-            return true;
+            // Check for duplicate path (excluding current page)
+            Optional<Page> existingPage = pageRepository.findByPath(pageDetails.getPath());
+            if (existingPage.isPresent() && !existingPage.get().getId().equals(id)) {
+                throw new IllegalArgumentException("Page with this path already exists");
+            }
+            
+            page.setName(pageDetails.getName());
+            page.setPath(pageDetails.getPath());
+            page.setDescription(pageDetails.getDescription());
+            page.setLastModifiedBy(pageDetails.getLastModifiedBy());
+            page.setLastModifiedDate(LocalDateTime.now());
+            
+            return pageRepository.save(page);
+        } else {
+            throw new RuntimeException("Page not found with id: " + id);
         }
-        return false;
     }
 
-    public List<Page> searchPages(String searchTerm) {
-        return pageRepository.findAll().stream()
-            .filter(page -> page.getName().toLowerCase().contains(searchTerm.toLowerCase()) ||
-                           page.getPath().toLowerCase().contains(searchTerm.toLowerCase()) ||
-                           (page.getDescription() != null && page.getDescription().toLowerCase().contains(searchTerm.toLowerCase())))
-            .toList();
+    public void deletePage(String id) {
+        if (pageRepository.existsById(id)) {
+            pageRepository.deleteById(id);
+        } else {
+            throw new RuntimeException("Page not found with id: " + id);
+        }
     }
 }

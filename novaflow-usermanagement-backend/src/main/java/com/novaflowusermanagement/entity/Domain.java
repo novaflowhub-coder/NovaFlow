@@ -58,11 +58,6 @@ public class Domain {
     @JsonManagedReference("domain-roles")
     private List<Role> roles;
     
-    @OneToMany(mappedBy = "domain", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    @JsonManagedReference("domain-userdomainroles")
-    private List<UserDomainRole> userDomainRoles;
-    
     // Constructors
     public Domain() {}
     
@@ -105,9 +100,6 @@ public class Domain {
     
     public List<Role> getRoles() { return roles; }
     public void setRoles(List<Role> roles) { this.roles = roles; }
-    
-    public List<UserDomainRole> getUserDomainRoles() { return userDomainRoles; }
-    public void setUserDomainRoles(List<UserDomainRole> userDomainRoles) { this.userDomainRoles = userDomainRoles; }
     
     @PrePersist
     protected void onCreate() {

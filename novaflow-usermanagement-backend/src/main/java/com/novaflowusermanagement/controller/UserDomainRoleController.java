@@ -1,6 +1,8 @@
 package com.novaflowusermanagement.controller;
 
 import com.novaflowusermanagement.entity.UserDomainRole;
+import com.novaflowusermanagement.dto.UserDomainRoleDTO;
+import com.novaflowusermanagement.dto.CreateUserDomainRoleRequest;
 import com.novaflowusermanagement.service.UserDomainRoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,82 +21,67 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/user-domain-roles")
 @CrossOrigin(origins = "*")
-@Tag(name = "User Domain Role Management", description = "APIs for managing user-domain-role assignments")
+@Tag(name = "User Role Assignment Management", description = "APIs for managing user-role assignments")
 public class UserDomainRoleController {
     
     @Autowired
     private UserDomainRoleService userDomainRoleService;
     
     @GetMapping
-    @Operation(summary = "Get all user domain roles", description = "Retrieve all user-domain-role assignments")
-    @ApiResponse(responseCode = "200", description = "Successfully retrieved user domain roles")
-    public ResponseEntity<List<UserDomainRole>> getAllUserDomainRoles() {
-        List<UserDomainRole> userDomainRoles = userDomainRoleService.getAllUserDomainRoles();
+    @Operation(summary = "Get all user role assignments", description = "Retrieve all user-role assignments with joined user and role data")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved user role assignments")
+    public ResponseEntity<List<UserDomainRoleDTO>> getAllUserDomainRoles(
+            @Parameter(description = "Search term to filter by user name, email, or role name") 
+            @RequestParam(required = false) String search) {
+        List<UserDomainRoleDTO> userDomainRoles;
+        if (search != null && !search.trim().isEmpty()) {
+            userDomainRoles = userDomainRoleService.searchUserDomainRolesWithJoinedData(search);
+        } else {
+            userDomainRoles = userDomainRoleService.getAllUserDomainRolesWithJoinedData();
+        }
         return ResponseEntity.ok(userDomainRoles);
     }
     
     @GetMapping("/{id}")
-    @Operation(summary = "Get user domain role by ID", description = "Retrieve a specific user-domain-role assignment by its ID")
+    @Operation(summary = "Get user role assignment by ID", description = "Retrieve a specific user-role assignment by its ID with joined data")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Assignment found"),
         @ApiResponse(responseCode = "404", description = "Assignment not found")
     })
-    public ResponseEntity<UserDomainRole> getUserDomainRoleById(@Parameter(description = "Assignment ID") @PathVariable String id) {
-        Optional<UserDomainRole> userDomainRole = userDomainRoleService.getUserDomainRoleById(id);
+    public ResponseEntity<UserDomainRoleDTO> getUserDomainRoleById(@Parameter(description = "Assignment ID") @PathVariable String id) {
+        Optional<UserDomainRoleDTO> userDomainRole = userDomainRoleService.getUserDomainRoleByIdWithJoinedData(id);
         return userDomainRole.map(ResponseEntity::ok)
                             .orElse(ResponseEntity.notFound().build());
     }
     
     @GetMapping("/user/{userId}")
-    @Operation(summary = "Get assignments by user", description = "Retrieve all role assignments for a specific user")
-    public ResponseEntity<List<UserDomainRole>> getUserDomainRolesByUser(@Parameter(description = "User ID") @PathVariable String userId) {
-        List<UserDomainRole> userDomainRoles = userDomainRoleService.getUserDomainRolesByUser(userId);
+    @Operation(summary = "Get assignments by user", description = "Retrieve all role assignments for a specific user with joined data")
+    public ResponseEntity<List<UserDomainRoleDTO>> getUserDomainRolesByUser(@Parameter(description = "User ID") @PathVariable String userId) {
+        List<UserDomainRoleDTO> userDomainRoles = userDomainRoleService.getUserDomainRolesByUserWithJoinedData(userId);
         return ResponseEntity.ok(userDomainRoles);
     }
     
     @GetMapping("/user/{userId}/active")
-    @Operation(summary = "Get active assignments by user", description = "Retrieve active role assignments for a specific user")
-    public ResponseEntity<List<UserDomainRole>> getActiveUserDomainRolesByUser(@Parameter(description = "User ID") @PathVariable String userId) {
-        List<UserDomainRole> userDomainRoles = userDomainRoleService.getActiveUserDomainRolesByUser(userId);
-        return ResponseEntity.ok(userDomainRoles);
-    }
-    
-    @GetMapping("/domain/{domainId}")
-    @Operation(summary = "Get assignments by domain", description = "Retrieve all role assignments for a specific domain")
-    public ResponseEntity<List<UserDomainRole>> getUserDomainRolesByDomain(@Parameter(description = "Domain ID") @PathVariable String domainId) {
-        List<UserDomainRole> userDomainRoles = userDomainRoleService.getUserDomainRolesByDomain(domainId);
-        return ResponseEntity.ok(userDomainRoles);
-    }
-    
-    @GetMapping("/domain/{domainId}/active")
-    @Operation(summary = "Get active assignments by domain", description = "Retrieve active role assignments for a specific domain")
-    public ResponseEntity<List<UserDomainRole>> getActiveUserDomainRolesByDomain(@Parameter(description = "Domain ID") @PathVariable String domainId) {
-        List<UserDomainRole> userDomainRoles = userDomainRoleService.getActiveUserDomainRolesByDomain(domainId);
+    @Operation(summary = "Get active assignments by user", description = "Retrieve active role assignments for a specific user with joined data")
+    public ResponseEntity<List<UserDomainRoleDTO>> getActiveUserDomainRolesByUser(@Parameter(description = "User ID") @PathVariable String userId) {
+        List<UserDomainRoleDTO> userDomainRoles = userDomainRoleService.getActiveUserDomainRolesByUserWithJoinedData(userId);
         return ResponseEntity.ok(userDomainRoles);
     }
     
     @GetMapping("/role/{roleId}")
-    @Operation(summary = "Get assignments by role", description = "Retrieve all assignments for a specific role")
-    public ResponseEntity<List<UserDomainRole>> getUserDomainRolesByRole(@Parameter(description = "Role ID") @PathVariable String roleId) {
-        List<UserDomainRole> userDomainRoles = userDomainRoleService.getUserDomainRolesByRole(roleId);
-        return ResponseEntity.ok(userDomainRoles);
-    }
-    
-    @GetMapping("/user/{userId}/domain/{domainId}/active")
-    @Operation(summary = "Get active assignments by user and domain", description = "Retrieve active role assignments for a specific user in a specific domain")
-    public ResponseEntity<List<UserDomainRole>> getActiveUserDomainRolesByUserAndDomain(
-            @Parameter(description = "User ID") @PathVariable String userId, 
-            @Parameter(description = "Domain ID") @PathVariable String domainId) {
-        List<UserDomainRole> userDomainRoles = userDomainRoleService.getActiveUserDomainRolesByUserAndDomain(userId, domainId);
+    @Operation(summary = "Get assignments by role", description = "Retrieve all assignments for a specific role with joined data")
+    public ResponseEntity<List<UserDomainRoleDTO>> getUserDomainRolesByRole(@Parameter(description = "Role ID") @PathVariable String roleId) {
+        List<UserDomainRoleDTO> userDomainRoles = userDomainRoleService.getUserDomainRolesByRoleWithJoinedData(roleId);
         return ResponseEntity.ok(userDomainRoles);
     }
     
     @PostMapping
-    @Operation(summary = "Create user domain role assignment", description = "Create a new user-domain-role assignment")
+    @Operation(summary = "Create user role assignment", description = "Create a new user-role assignment")
     @ApiResponse(responseCode = "201", description = "Assignment created successfully")
-    public ResponseEntity<UserDomainRole> createUserDomainRole(@Valid @RequestBody UserDomainRole userDomainRole) {
+    public ResponseEntity<UserDomainRoleDTO> createUserDomainRole(@Valid @RequestBody CreateUserDomainRoleRequest request) {
         try {
-            UserDomainRole createdUserDomainRole = userDomainRoleService.createUserDomainRole(userDomainRole);
+            UserDomainRoleDTO createdUserDomainRole = userDomainRoleService.createUserDomainRoleFromIdsWithJoinedData(
+                request.getUserId(), request.getRoleId(), request.getAssignedBy());
             return ResponseEntity.status(HttpStatus.CREATED).body(createdUserDomainRole);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -102,9 +89,9 @@ public class UserDomainRoleController {
     }
     
     @PutMapping("/{id}")
-    @Operation(summary = "Update user domain role assignment", description = "Update an existing user-domain-role assignment")
-    public ResponseEntity<UserDomainRole> updateUserDomainRole(@Parameter(description = "Assignment ID") @PathVariable String id, @Valid @RequestBody UserDomainRole userDomainRoleDetails) {
-        UserDomainRole updatedUserDomainRole = userDomainRoleService.updateUserDomainRole(id, userDomainRoleDetails);
+    @Operation(summary = "Update user role assignment", description = "Update an existing user-role assignment")
+    public ResponseEntity<UserDomainRoleDTO> updateUserDomainRole(@Parameter(description = "Assignment ID") @PathVariable String id, @Valid @RequestBody UserDomainRole userDomainRoleDetails) {
+        UserDomainRoleDTO updatedUserDomainRole = userDomainRoleService.updateUserDomainRoleWithJoinedData(id, userDomainRoleDetails);
         if (updatedUserDomainRole != null) {
             return ResponseEntity.ok(updatedUserDomainRole);
         }
@@ -112,7 +99,7 @@ public class UserDomainRoleController {
     }
     
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete user domain role assignment", description = "Delete a user-domain-role assignment")
+    @Operation(summary = "Delete user role assignment", description = "Delete a user-role assignment")
     @ApiResponse(responseCode = "204", description = "Assignment deleted successfully")
     public ResponseEntity<Void> deleteUserDomainRole(@Parameter(description = "Assignment ID") @PathVariable String id) {
         boolean deleted = userDomainRoleService.deleteUserDomainRole(id);
@@ -123,9 +110,9 @@ public class UserDomainRoleController {
     }
     
     @PutMapping("/{id}/activate")
-    @Operation(summary = "Activate assignment", description = "Activate a user-domain-role assignment")
-    public ResponseEntity<UserDomainRole> activateUserDomainRole(@Parameter(description = "Assignment ID") @PathVariable String id, @RequestParam String assignedBy) {
-        UserDomainRole userDomainRole = userDomainRoleService.activateUserDomainRole(id, assignedBy);
+    @Operation(summary = "Activate assignment", description = "Activate a user-role assignment")
+    public ResponseEntity<UserDomainRoleDTO> activateUserDomainRole(@Parameter(description = "Assignment ID") @PathVariable String id, @RequestParam String assignedBy) {
+        UserDomainRoleDTO userDomainRole = userDomainRoleService.activateUserDomainRoleWithJoinedData(id, assignedBy);
         if (userDomainRole != null) {
             return ResponseEntity.ok(userDomainRole);
         }
@@ -133,9 +120,9 @@ public class UserDomainRoleController {
     }
     
     @PutMapping("/{id}/deactivate")
-    @Operation(summary = "Deactivate assignment", description = "Deactivate a user-domain-role assignment")
-    public ResponseEntity<UserDomainRole> deactivateUserDomainRole(@Parameter(description = "Assignment ID") @PathVariable String id, @RequestParam String assignedBy) {
-        UserDomainRole userDomainRole = userDomainRoleService.deactivateUserDomainRole(id, assignedBy);
+    @Operation(summary = "Deactivate assignment", description = "Deactivate a user-role assignment")
+    public ResponseEntity<UserDomainRoleDTO> deactivateUserDomainRole(@Parameter(description = "Assignment ID") @PathVariable String id, @RequestParam String assignedBy) {
+        UserDomainRoleDTO userDomainRole = userDomainRoleService.deactivateUserDomainRoleWithJoinedData(id, assignedBy);
         if (userDomainRole != null) {
             return ResponseEntity.ok(userDomainRole);
         }

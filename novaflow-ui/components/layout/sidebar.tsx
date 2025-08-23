@@ -21,6 +21,12 @@ import {
   CalendarCheck,
   History,
   Building,
+  UserCheck,
+  Shield,
+  FileCheck,
+  UserPlus,
+  Settings2,
+  Globe,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -32,9 +38,23 @@ const mainNavItems = [
   { href: "/approvals", label: "Approvals", icon: ShieldCheck },
   { href: "/process-monitor", label: "Process Monitor", icon: Monitor },
   { href: "/version-history", label: "Version History", icon: History },
-  { href: "/user-management", label: "User Management", icon: Users },
-  { href: "/domain-management", label: "Domain Management", icon: Building },
   { href: "/data-workflow", label: "Data Workflow", icon: Workflow },
+]
+
+const administrationNavGroups = [
+  {
+    groupName: "Administration",
+    icon: Settings,
+    items: [
+      { href: "/user-management/users", label: "Users", icon: Users },
+      { href: "/user-management/roles", label: "Roles", icon: UserCheck },
+      { href: "/user-management/permission-types", label: "Permission Types", icon: Shield },
+      { href: "/user-management/assignments", label: "Assignments", icon: UserPlus },
+      { href: "/user-management/role-page-permissions", label: "Role-Page Permissions", icon: Settings2 },
+      { href: "/user-management/pages", label: "Pages", icon: FileCheck },
+      { href: "/domains", label: "Domains", icon: Globe },
+    ],
+  },
 ]
 
 const definitionNavGroups = [
@@ -67,7 +87,7 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed }: SidebarProps) {
   const pathname = usePathname()
-  const isActive = (href: string) => pathname === href
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
   return (
     <aside
@@ -111,8 +131,68 @@ export function Sidebar({ isCollapsed }: SidebarProps) {
                 </Link>
               ),
             )}
-
-            <Accordion type="multiple" defaultValue={definitionNavGroups.map((g) => g.groupName)} className="w-full">
+            <Accordion type="multiple" defaultValue={[...administrationNavGroups.map((g) => g.groupName), ...definitionNavGroups.map((g) => g.groupName)]} className="w-full">
+              {administrationNavGroups.map((group) => (
+                <AccordionItem value={group.groupName} key={group.groupName} className="border-none">
+                  <AccordionTrigger
+                    className={cn(
+                      "py-2 text-sm font-medium text-muted-foreground hover:no-underline hover:bg-accent hover:text-accent-foreground rounded-md [&[data-state=open]>svg]:rotate-180",
+                      isCollapsed ? "px-3 justify-center" : "px-3",
+                    )}
+                  >
+                    {isCollapsed ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex h-10 w-10 items-center justify-center">
+                            <group.icon className="h-5 w-5" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">{group.groupName}</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <group.icon className="h-4 w-4" />
+                        {group.groupName}
+                      </div>
+                    )}
+                  </AccordionTrigger>
+                  <AccordionContent className="data-[state=closed]:hidden">
+                    <div className={cn("flex flex-col items-center", isCollapsed ? "gap-1" : "gap-1 pl-4")}>
+                      {group.items.map((item) =>
+                        isCollapsed ? (
+                          <Tooltip key={item.href}>
+                            <TooltipTrigger asChild>
+                              <Link
+                                href={item.href}
+                                className={cn(
+                                  "flex h-10 w-10 items-center justify-center rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                                  isActive(item.href) ? "bg-accent text-accent-foreground" : "text-muted-foreground",
+                                )}
+                              >
+                                <item.icon className="h-5 w-5" />
+                                <span className="sr-only">{item.label}</span>
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">{item.label}</TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className={cn(
+                              "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                              isActive(item.href) ? "bg-accent text-accent-foreground" : "text-muted-foreground",
+                            )}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            {item.label}
+                          </Link>
+                        ),
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
               {definitionNavGroups.map((group) => (
                 <AccordionItem value={group.groupName} key={group.groupName} className="border-none">
                   <AccordionTrigger

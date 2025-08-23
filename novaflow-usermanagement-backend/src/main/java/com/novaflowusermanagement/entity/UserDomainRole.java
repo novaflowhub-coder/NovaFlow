@@ -9,28 +9,19 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "user_domain_roles")
-@Schema(description = "Entity representing user-domain-role assignments", example = "{\"id\": \"UDR001\", \"user_id\": \"USR001\", \"domain_id\": \"DOM001\", \"role_id\": \"ROLE001\", \"is_active\": true, \"assigned_by\": \"system\"}")
+@Schema(description = "Entity representing user-role assignments", example = "{\"id\": \"UDR001\", \"user_id\": \"USR001\", \"role_id\": \"ROLE001\", \"is_active\": true, \"assigned_by\": \"system\"}")
 public class UserDomainRole {
     
     @Id
-    @Schema(description = "Unique identifier for the user-domain-role assignment", example = "UDR001")
+    @Schema(description = "Unique identifier for the user-role assignment", example = "UDR001")
     private String id;
     
-    @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @JsonBackReference("user-userdomainroles")
     @Schema(description = "User assigned to the role")
     private User user;
     
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "domain_id")
-    @JsonBackReference("domain-userdomainroles")
-    @Schema(description = "Domain where the role is assigned")
-    private Domain domain;
-    
-    @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id")
     @JsonBackReference("role-userdomainroles")
@@ -54,10 +45,9 @@ public class UserDomainRole {
     // Constructors
     public UserDomainRole() {}
     
-    public UserDomainRole(String id, User user, Domain domain, Role role, String assignedBy) {
+    public UserDomainRole(String id, User user, Role role, String assignedBy) {
         this.id = id;
         this.user = user;
-        this.domain = domain;
         this.role = role;
         this.assignedBy = assignedBy;
         this.assignedDate = LocalDateTime.now();
@@ -69,9 +59,6 @@ public class UserDomainRole {
     
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
-    
-    public Domain getDomain() { return domain; }
-    public void setDomain(Domain domain) { this.domain = domain; }
     
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
@@ -89,4 +76,6 @@ public class UserDomainRole {
     protected void onCreate() {
         assignedDate = LocalDateTime.now();
     }
+    
+    public interface Create {}
 }

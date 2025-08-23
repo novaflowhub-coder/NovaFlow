@@ -10,103 +10,120 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/permission-types")
-@CrossOrigin(origins = "*")
-@Tag(name = "Permission Type Management", description = "APIs for managing permission types")
+@Tag(name = "Permission Types", description = "Permission type management operations")
 public class PermissionTypeController {
 
     @Autowired
     private PermissionTypeService permissionTypeService;
 
     @GetMapping
-    @PreAuthorize("@authz.hasPermission(authentication, 'view', '/permission-management')")
-    @Operation(summary = "Get all permission types", description = "Retrieve all permission types")
-    @ApiResponse(responseCode = "200", description = "Successfully retrieved permission types")
-    public ResponseEntity<List<PermissionType>> getAllPermissionTypes() {
-        List<PermissionType> permissionTypes = permissionTypeService.getAllPermissionTypes();
-        return ResponseEntity.ok(permissionTypes);
+    @Operation(summary = "Get all permission types", description = "Retrieve all permission types with optional search")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved permission types")
+    })
+    public ResponseEntity<List<PermissionType>> getAllPermissionTypes(
+            @Parameter(description = "Search term to filter permission types") 
+            @RequestParam(required = false) String search) {
+        try {
+            List<PermissionType> permissionTypes;
+            if (search != null && !search.trim().isEmpty()) {
+                permissionTypes = permissionTypeService.searchPermissionTypes(search);
+            } else {
+                permissionTypes = permissionTypeService.getAllPermissionTypes();
+            }
+            return ResponseEntity.ok(permissionTypes);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'view', '/permission-management')")
     @Operation(summary = "Get permission type by ID", description = "Retrieve a specific permission type by its ID")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Permission type found"),
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved permission type"),
         @ApiResponse(responseCode = "404", description = "Permission type not found")
     })
-    public ResponseEntity<PermissionType> getPermissionTypeById(@Parameter(description = "Permission Type ID") @PathVariable String id) {
-        Optional<PermissionType> permissionType = permissionTypeService.getPermissionTypeById(id);
-        return permissionType.map(ResponseEntity::ok)
-                           .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/name/{name}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'view', '/permission-management')")
-    @Operation(summary = "Get permission type by name", description = "Retrieve a permission type by its name")
-    public ResponseEntity<PermissionType> getPermissionTypeByName(@Parameter(description = "Permission Type name") @PathVariable String name) {
-        Optional<PermissionType> permissionType = permissionTypeService.getPermissionTypeByName(name);
-        return permissionType.map(ResponseEntity::ok)
-                           .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/search")
-    @PreAuthorize("@authz.hasPermission(authentication, 'view', '/permission-management')")
-    @Operation(summary = "Search permission types", description = "Search permission types by name or description")
-    public ResponseEntity<List<PermissionType>> searchPermissionTypes(@Parameter(description = "Search term") @RequestParam String term) {
-        List<PermissionType> permissionTypes = permissionTypeService.searchPermissionTypes(term);
-        return ResponseEntity.ok(permissionTypes);
+    public ResponseEntity<PermissionType> getPermissionTypeById(
+            @Parameter(description = "Permission type ID") 
+            @PathVariable String id) {
+        try {
+            Optional<PermissionType> permissionType = permissionTypeService.getPermissionTypeById(id);
+            return permissionType.map(ResponseEntity::ok)
+                                .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @PostMapping
-    @PreAuthorize("@authz.hasPermission(authentication, 'edit', '/permission-management')")
-    @Operation(summary = "Create permission type", description = "Create a new permission type")
-    @ApiResponse(responseCode = "201", description = "Permission type created successfully")
-    public ResponseEntity<PermissionType> createPermissionType(@Valid @RequestBody PermissionType permissionType) {
+    @Operation(summary = "Create new permission type", description = "Create a new permission type")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Permission type created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data")
+    })
+    public ResponseEntity<?> createPermissionType(@RequestBody PermissionType permissionType) {
         try {
             PermissionType createdPermissionType = permissionTypeService.createPermissionType(permissionType);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdPermissionType);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create permission type");
         }
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'edit', '/permission-management')")
     @Operation(summary = "Update permission type", description = "Update an existing permission type")
-    public ResponseEntity<PermissionType> updatePermissionType(@Parameter(description = "Permission Type ID") @PathVariable String id, 
-                                                             @Valid @RequestBody PermissionType permissionTypeDetails) {
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Permission type updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "404", description = "Permission type not found")
+    })
+    public ResponseEntity<?> updatePermissionType(
+            @Parameter(description = "Permission type ID") 
+            @PathVariable String id, 
+            @RequestBody PermissionType permissionTypeDetails) {
         try {
             PermissionType updatedPermissionType = permissionTypeService.updatePermissionType(id, permissionTypeDetails);
-            if (updatedPermissionType != null) {
-                return ResponseEntity.ok(updatedPermissionType);
-            }
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(updatedPermissionType);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update permission type");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update permission type");
         }
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'delete', '/permission-management')")
-    @Operation(summary = "Delete permission type", description = "Delete a permission type")
-    @ApiResponse(responseCode = "204", description = "Permission type deleted successfully")
-    public ResponseEntity<Void> deletePermissionType(@Parameter(description = "Permission Type ID") @PathVariable String id) {
-        boolean deleted = permissionTypeService.deletePermissionType(id);
-        if (deleted) {
+    @Operation(summary = "Delete permission type", description = "Delete a permission type by ID")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Permission type deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "Permission type not found")
+    })
+    public ResponseEntity<?> deletePermissionType(
+            @Parameter(description = "Permission type ID") 
+            @PathVariable String id) {
+        try {
+            permissionTypeService.deletePermissionType(id);
             return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to delete permission type");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to delete permission type");
         }
-        return ResponseEntity.notFound().build();
     }
 }

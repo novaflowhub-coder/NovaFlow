@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -13,8 +14,6 @@ public interface PermissionTypeRepository extends JpaRepository<PermissionType, 
     
     Optional<PermissionType> findByName(String name);
     
-    @Query("SELECT pt FROM PermissionType pt WHERE pt.name = :name")
-    Optional<PermissionType> findByNameExact(@Param("name") String name);
-    
-    boolean existsByName(String name);
+    @Query("SELECT pt FROM PermissionType pt WHERE pt.name LIKE %:searchTerm% OR pt.description LIKE %:searchTerm%")
+    List<PermissionType> findBySearchTerm(@Param("searchTerm") String searchTerm);
 }

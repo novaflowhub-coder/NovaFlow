@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,61 +17,75 @@ public class User {
     
     @Id
     @Schema(description = "Unique identifier for the user", example = "USR001")
+    @JsonProperty("id")
     private String id;
     
     @NotBlank
     @Schema(description = "User display name", example = "John Doe")
+    @JsonProperty("name")
     private String name;
     
     @NotBlank
     @Email
     @Column(unique = true)
     @Schema(description = "User email address", example = "john.doe@company.com")
+    @JsonProperty("email")
     private String email;
     
     @Column(unique = true)
     @Schema(description = "Username for login", example = "jdoe")
+    @JsonProperty("username")
     private String username;
     
     @Column(name = "full_name")
+    @JsonProperty("full_name")
     @Schema(description = "Full name of the user", example = "John Michael Doe")
     private String fullName;
     
     @Schema(description = "Department the user belongs to", example = "Finance Department")
+    @JsonProperty("department")
     private String department;
     
     @NotNull
     @Schema(description = "User status", example = "Active")
+    @JsonProperty("status")
     private String status = "Active";
     
     @NotNull
     @Column(name = "is_active")
+    @JsonProperty("is_active")
     @Schema(description = "Whether the user is active", example = "true")
     private Boolean isActive = true;
     
     @Column(name = "last_login")
+    @JsonProperty("last_login")
     @Schema(description = "Last login timestamp", example = "2025-08-21T19:30:00")
     private LocalDateTime lastLogin;
     
-    @NotBlank
+    @NotBlank(groups = ValidationGroups.OnCreate.class)
     @Column(name = "created_by")
+    @JsonProperty("created_by")
     @Schema(description = "User who created this user", example = "system")
     private String createdBy;
     
     @Column(name = "created_date")
+    @JsonProperty("created_date")
     @Schema(description = "Date when user was created", example = "2025-08-21T20:00:00")
     private LocalDateTime createdDate;
     
     @Column(name = "updated_by")
+    @JsonProperty("updated_by")
     @Schema(description = "User who last updated this user", example = "admin")
     private String updatedBy;
     
     @Column(name = "updated_date")
+    @JsonProperty("updated_date")
     @Schema(description = "Date when user was last updated", example = "2025-08-21T21:00:00")
     private LocalDateTime updatedDate;
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference("user-userdomainroles")
+    @JsonProperty("user_domain_roles")
     private List<UserDomainRole> userDomainRoles;
     
     // Constructors
