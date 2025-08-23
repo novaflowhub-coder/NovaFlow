@@ -1,16 +1,8 @@
+import { RolePagePermission } from '@/lib/types';
 import { authService } from './auth';
 
-export interface RolePagePermission {
-  id?: string;
-  pageId: string;
-  roleName: string;
-  permissionTypeId: string;
-  isGranted?: boolean;
-  createdBy?: string;
-  createdDate?: string;
-  lastModifiedBy?: string;
-  lastModifiedDate?: string;
-}
+// Re-export the type so it can be imported from this module
+export type { RolePagePermission };
 
 export interface GrantPermissionRequest {
   roleName: string;
@@ -27,33 +19,37 @@ export interface RevokePermissionRequest {
 }
 
 class RolePagePermissionsApiService {
-  private readonly BACKEND_URL: string;
-
-  constructor() {
-    this.BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
-  }
-
-  private async getAuthHeaders(): Promise<HeadersInit> {
-    const token = authService.getToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : '',
-    };
-  }
+  private BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 
   private getCurrentUser() {
     return authService.getCurrentUser();
   }
 
-  async getAllRolePagePermissions(): Promise<RolePagePermission[]> {
+  private async getAuthHeaders(): Promise<HeadersInit> {
+    const token = authService.getToken();
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    };
+  }
+
+  async getAllRolePagePermissions(search?: string): Promise<RolePagePermission[]> {
+    const url = search 
+      ? `${this.BACKEND_URL}/api/role-page-permissions?search=${encodeURIComponent(search)}` 
+      : `${this.BACKEND_URL}/api/role-page-permissions`;
+    
     const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions`, {
+    const response = await fetch(url, {
       method: 'GET',
       headers,
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch role-page permissions: ${response.statusText}`);
+      throw new Error(`Failed to fetch role page permissions: ${response.statusText}`);
     }
 
     return response.json();
@@ -67,85 +63,141 @@ class RolePagePermissionsApiService {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch role-page permission: ${response.statusText}`);
+      throw new Error(`Failed to fetch role page permission: ${response.statusText}`);
     }
 
     return response.json();
   }
 
-  async getRolePagePermissions(pageId: string): Promise<RolePagePermission[]> {
-    const allPermissions = await this.getAllRolePagePermissions();
-    // Filter by pageId and only return granted permissions
-    return allPermissions.filter(p => p.pageId === pageId && p.isGranted === true);
-  }
-
-  async getPermissionsByRoles(roleNames: string[]): Promise<RolePagePermission[]> {
+  async getPermissionsByRole(roleName: string): Promise<RolePagePermission[]> {
     const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/by-roles`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(roleNames),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch permissions by roles: ${response.statusText}`);
-    }
-
-    return response.json();
-  }
-
-  async getSpecificPermission(roleName: string, pageId: string, permissionTypeId: string): Promise<RolePagePermission[]> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/role/${encodeURIComponent(roleName)}/page/${pageId}/permission/${permissionTypeId}`, {
+    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/role/${encodeURIComponent(roleName)}`, {
       method: 'GET',
       headers,
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch specific permission: ${response.statusText}`);
+      throw new Error(`Failed to fetch permissions by role: ${response.statusText}`);
     }
 
     return response.json();
   }
 
-  async createRolePagePermission(permission: RolePagePermission): Promise<RolePagePermission> {
+  async getGrantedPermissionsByRole(roleName: string): Promise<RolePagePermission[]> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/role/${encodeURIComponent(roleName)}/granted`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch granted permissions by role: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async getPermissionsByPage(pageId: string): Promise<RolePagePermission[]> {
+    const headers = await this.getAuthHeaders();
+    const url = `${this.BACKEND_URL}/api/role-page-permissions/page/${pageId}`;
+    console.log('Calling API:', url);
+    console.log('Request headers:', headers);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    console.log('Response status:', response.status);
+    console.log('Response statusText:', response.statusText);
+    console.log('Response URL:', response.url);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error Details:');
+      console.error('- Status:', response.status);
+      console.error('- Status Text:', response.statusText);
+      console.error('- URL:', response.url);
+      console.error('- Error Text:', errorText);
+      console.error('- Response Headers:', [...response.headers.entries()]);
+      
+      throw new Error(errorText || `Failed to fetch permissions by page: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async createRolePagePermission(rolePagePermission: Partial<RolePagePermission>): Promise<RolePagePermission> {
     const headers = await this.getAuthHeaders();
     const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(permission),
+      body: JSON.stringify(rolePagePermission),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(errorText || `Failed to create role-page permission: ${response.statusText}`);
+      throw new Error(errorText || `Failed to create role page permission: ${response.statusText}`);
     }
 
     return response.json();
   }
 
-  async updateRolePagePermission(id: string, permission: RolePagePermission): Promise<RolePagePermission> {
+  async createRolePagePermissionFromIds(
+    roleName: string, 
+    pageId: string, 
+    permissionTypeId: string, 
+    isGranted: boolean
+  ): Promise<RolePagePermission> {
+    const currentUser = this.getCurrentUser();
+    const createdBy = currentUser?.email || 'system';
+
+    const params = new URLSearchParams({
+      roleName,
+      pageId,
+      permissionTypeId,
+      isGranted: isGranted.toString(),
+      createdBy
+    });
+
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/create?${params}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `Failed to create role page permission: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async updateRolePagePermission(id: string, rolePagePermission: Partial<RolePagePermission>): Promise<RolePagePermission> {
     const headers = await this.getAuthHeaders();
     const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/${id}`, {
       method: 'PUT',
       headers,
-      body: JSON.stringify(permission),
+      body: JSON.stringify(rolePagePermission),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(errorText || `Failed to update role-page permission: ${response.statusText}`);
+      throw new Error(errorText || `Failed to update role page permission: ${response.statusText}`);
     }
 
     return response.json();
   }
 
-  async grantPermission(request: GrantPermissionRequest): Promise<RolePagePermission> {
+  async grantPermission(id: string): Promise<RolePagePermission> {
+    const currentUser = this.getCurrentUser();
+    const modifiedBy = currentUser?.email || 'system';
+
     const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/grant`, {
-      method: 'POST',
+    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/${id}/grant?modifiedBy=${encodeURIComponent(modifiedBy)}`, {
+      method: 'PUT',
       headers,
-      body: JSON.stringify(request),
     });
 
     if (!response.ok) {
@@ -156,17 +208,52 @@ class RolePagePermissionsApiService {
     return response.json();
   }
 
-  async revokePermission(request: RevokePermissionRequest): Promise<void> {
+  async revokePermission(id: string): Promise<RolePagePermission> {
+    const currentUser = this.getCurrentUser();
+    const modifiedBy = currentUser?.email || 'system';
+
     const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/revoke`, {
-      method: 'POST',
+    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/${id}/revoke?modifiedBy=${encodeURIComponent(modifiedBy)}`, {
+      method: 'PUT',
       headers,
-      body: JSON.stringify(request),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(errorText || `Failed to revoke permission: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async bulkUpdateRolePermissions(
+    roleName: string, 
+    pageIds: string[], 
+    permissionTypeIds: string[], 
+    isGranted: boolean
+  ): Promise<void> {
+    const currentUser = this.getCurrentUser();
+    const modifiedBy = currentUser?.email || 'system';
+
+    const params = new URLSearchParams({
+      roleName,
+      isGranted: isGranted.toString(),
+      modifiedBy
+    });
+
+    // Add multiple pageIds and permissionTypeIds
+    pageIds.forEach(pageId => params.append('pageIds', pageId));
+    permissionTypeIds.forEach(permissionTypeId => params.append('permissionTypeIds', permissionTypeId));
+
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.BACKEND_URL}/api/role-page-permissions/bulk-update?${params}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `Failed to bulk update permissions: ${response.statusText}`);
     }
   }
 
@@ -179,7 +266,7 @@ class RolePagePermissionsApiService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(errorText || `Failed to delete role-page permission: ${response.statusText}`);
+      throw new Error(errorText || `Failed to delete role page permission: ${response.statusText}`);
     }
   }
 
@@ -188,39 +275,34 @@ class RolePagePermissionsApiService {
     const currentUserEmail = currentUser?.email || 'system';
 
     // Get existing permissions for this page
-    const existingPermissions = await this.getRolePagePermissions(pageId);
+    const existingPermissions = await this.getPermissionsByPage(pageId);
     
     // Create sets for comparison
     const newPermissionKeys = new Set(
       permissions.map(p => `${p.roleName}-${p.permissionTypeId}`)
     );
     const existingPermissionKeys = new Set(
-      existingPermissions.map(p => `${p.roleName}-${p.permissionTypeId}`)
+      existingPermissions.map(p => `${p.roleName}-${p.permissionType?.id}`)
     );
 
     // Grant new permissions
     for (const permission of permissions) {
       const key = `${permission.roleName}-${permission.permissionTypeId}`;
-      if (!existingPermissionKeys.has(key)) {
-        await this.grantPermission({
-          roleName: permission.roleName,
-          pageId: pageId,
-          permissionTypeId: permission.permissionTypeId,
-          grantedBy: currentUserEmail
-        });
+      if (!existingPermissionKeys.has(key) && permission.permissionTypeId) {
+        await this.createRolePagePermissionFromIds(
+          permission.roleName,
+          pageId,
+          permission.permissionTypeId,
+          true
+        );
       }
     }
 
     // Revoke removed permissions
     for (const existingPermission of existingPermissions) {
-      const key = `${existingPermission.roleName}-${existingPermission.permissionTypeId}`;
-      if (!newPermissionKeys.has(key)) {
-        await this.revokePermission({
-          roleName: existingPermission.roleName,
-          pageId: pageId,
-          permissionTypeId: existingPermission.permissionTypeId,
-          revokedBy: currentUserEmail
-        });
+      const key = `${existingPermission.roleName}-${existingPermission.permissionType?.id}`;
+      if (!newPermissionKeys.has(key) && existingPermission.id) {
+        await this.revokePermission(existingPermission.id);
       }
     }
   }

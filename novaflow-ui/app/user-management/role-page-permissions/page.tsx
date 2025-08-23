@@ -7,12 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 import { Save } from "lucide-react"
-import { CrudHeader } from "@/components/um/crud-header"
 import { LoadingSkeleton } from "@/components/um/loading-skeleton"
+import { AccessControl } from "@/components/um/access-control"
 import { rolesApiService, type Role } from '@/lib/roles-api';
 import { pagesApiService, type Page } from '@/lib/pages-api';
 import { permissionTypesApiService, type PermissionType } from '@/lib/permission-types-api';
 import { rolePagePermissionsApiService, type RolePagePermission } from '@/lib/role-page-permissions-api';
+import { authService } from '@/lib/auth';
 
 export default function RolePagePermissionsPage() {
   const [roles, setRoles] = useState<Role[]>([])
@@ -37,19 +38,46 @@ export default function RolePagePermissionsPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [rolesData, pagesData, permissionTypesData] = await Promise.all([
-        rolesApiService.getRoles(),
-        pagesApiService.getPages(),
-        permissionTypesApiService.getPermissionTypes()
-      ])
-      setRoles(rolesData)
-      setPages(pagesData)
-      setPermissionTypes(permissionTypesData)
       
-      // Auto-select first page if available
-      if (pagesData.length > 0) {
-        setSelectedPageId(pagesData[0].id)
+      // Load roles, pages, and permission types - handle each API call separately for better error handling
+      const rolesPromise = rolesApiService.getRoles()
+      const pagesPromise = pagesApiService.getPages()
+      const permissionTypesPromise = permissionTypesApiService.getPermissionTypes()
+      
+      const [rolesData, pagesData, permissionTypesData] = await Promise.allSettled([
+        rolesPromise,
+        pagesPromise,
+        permissionTypesPromise
+      ])
+      
+      // Handle roles data
+      if (rolesData.status === 'fulfilled') {
+        setRoles(rolesData.value)
+      } else {
+        console.log('Roles access not available:', rolesData.reason?.message)
+        setRoles([])
       }
+      
+      // Handle pages data
+      if (pagesData.status === 'fulfilled') {
+        setPages(pagesData.value)
+        // Auto-select first page if available
+        if (pagesData.value.length > 0) {
+          setSelectedPageId(pagesData.value[0].id)
+        }
+      } else {
+        console.log('Pages access not available:', pagesData.reason?.message)
+        setPages([])
+      }
+      
+      // Handle permission types data
+      if (permissionTypesData.status === 'fulfilled') {
+        setPermissionTypes(permissionTypesData.value)
+      } else {
+        console.log('Permission types access not available:', permissionTypesData.reason?.message)
+        setPermissionTypes([])
+      }
+      
     } catch (error) {
       console.error('Failed to load data:', error)
       toast({
@@ -66,7 +94,7 @@ export default function RolePagePermissionsPage() {
     if (!selectedPageId) return
 
     try {
-      const permissionsData = await rolePagePermissionsApiService.getRolePagePermissions(selectedPageId)
+      const permissionsData = await rolePagePermissionsApiService.getPermissionsByPage(selectedPageId)
       setPermissions(permissionsData)
     } catch (error) {
       console.error('Failed to load permissions:', error)
@@ -79,7 +107,10 @@ export default function RolePagePermissionsPage() {
   }
 
   const hasPermission = (roleName: string, permissionTypeId: string): boolean => {
-    return permissions.some(p => p.roleName === roleName && p.permissionTypeId === permissionTypeId)
+    return permissions.some(p => 
+      p.roleName === roleName && 
+      (p.permissionTypeId === permissionTypeId || p.permissionType?.id === permissionTypeId)
+    )
   }
 
   const togglePermission = (roleName: string, permissionTypeId: string) => {
@@ -88,16 +119,18 @@ export default function RolePagePermissionsPage() {
     if (exists) {
       // Remove permission
       setPermissions(prev => prev.filter(p => 
-        !(p.roleName === roleName && p.permissionTypeId === permissionTypeId)
+        !(p.roleName === roleName && 
+          (p.permissionTypeId === permissionTypeId || p.permissionType?.id === permissionTypeId))
       ))
     } else {
       // Add permission
-      const newPermission: RolePagePermission = {
+      const newPermission: Partial<RolePagePermission> = {
         pageId: selectedPageId,
         roleName,
-        permissionTypeId
+        permissionTypeId,
+        isGranted: true
       }
-      setPermissions(prev => [...prev, newPermission])
+      setPermissions(prev => [...prev, newPermission as RolePagePermission])
     }
   }
 
@@ -138,108 +171,113 @@ export default function RolePagePermissionsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <CrudHeader
-          title="Role-Page Permissions"
-          description="Manage permissions for roles on specific pages"
-          searchPlaceholder=""
-          searchValue=""
-          onSearchChange={() => {}}
-          addButtonText=""
-          onAddClick={() => {}}
-        />
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Role-Page Permissions</h1>
+            <p className="text-muted-foreground">
+              Manage permissions for roles on specific pages
+            </p>
+          </div>
+        </div>
         <LoadingSkeleton columns={4} />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <CrudHeader
-        title="Role-Page Permissions"
-        description="Manage permissions for roles on specific pages"
-        searchPlaceholder=""
-        searchValue=""
-        onSearchChange={() => {}}
-        addButtonText=""
-        onAddClick={() => {}}
-      />
-
-      {/* Page Selection */}
-      <div className="flex items-center gap-4">
-        <div className="flex-1 max-w-md">
-          <Select value={selectedPageId} onValueChange={setSelectedPageId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a page" />
-            </SelectTrigger>
-            <SelectContent>
-              {pages.map((page) => (
-                <SelectItem key={page.id} value={page.id}>
-                  {page.name} ({page.path})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button onClick={handleSave} disabled={saving || !selectedPageId}>
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? 'Saving...' : 'Save Permissions'}
-        </Button>
-      </div>
-
-      {selectedPageId ? (
-        <div className="space-y-4">
-          <div className="text-sm text-muted-foreground">
-            Managing permissions for: <strong>{getSelectedPageName()}</strong>
+    <AccessControl
+      requiredPath="/user-management/role-page-permissions"
+      requiredPermissions={['READ', 'WRITE']}
+      title="Role-Page Permissions"
+      description="Manage permissions for roles on specific pages"
+    >
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Role-Page Permissions</h1>
+            <p className="text-muted-foreground">
+              Manage permissions for roles on specific pages
+            </p>
           </div>
+        </div>
 
-          {roles.length === 0 || permissionTypes.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {roles.length === 0 ? 'No roles found.' : 'No permission types found.'}
+        {/* Page Selection */}
+        <div className="flex items-center gap-4">
+          <div className="flex-1 max-w-md">
+            <Select value={selectedPageId} onValueChange={setSelectedPageId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a page" />
+              </SelectTrigger>
+              <SelectContent>
+                {pages.map((page) => (
+                  <SelectItem key={page.id} value={page.id}>
+                    {page.name} ({page.path})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleSave} disabled={saving || !selectedPageId}>
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? 'Saving...' : 'Save Permissions'}
+          </Button>
+        </div>
+
+        {selectedPageId ? (
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Managing permissions for: <strong>{getSelectedPageName()}</strong>
             </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Role</TableHead>
-                    {permissionTypes.map((permissionType) => (
-                      <TableHead key={permissionType.id} className="text-center">
-                        {permissionType.name}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {roles.map((role) => (
-                    <TableRow key={role.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <div>{role.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {role.description || 'No description'}
-                          </div>
-                        </div>
-                      </TableCell>
+
+            {roles.length === 0 || permissionTypes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {roles.length === 0 ? 'No roles found.' : 'No permission types found.'}
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Role</TableHead>
                       {permissionTypes.map((permissionType) => (
-                        <TableCell key={permissionType.id} className="text-center">
-                          <Checkbox
-                            checked={hasPermission(role.name, permissionType.id)}
-                            onCheckedChange={() => togglePermission(role.name, permissionType.id)}
-                          />
-                        </TableCell>
+                        <TableHead key={permissionType.id} className="text-center">
+                          {permissionType.name}
+                        </TableHead>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center py-12 text-muted-foreground">
-          Please select a page to manage its role permissions.
-        </div>
-      )}
-    </div>
+                  </TableHeader>
+                  <TableBody>
+                    {roles.map((role) => (
+                      <TableRow key={role.id}>
+                        <TableCell className="font-medium">
+                          <div>
+                            <div>{role.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {role.description || 'No description'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        {permissionTypes.map((permissionType) => (
+                          <TableCell key={permissionType.id} className="text-center">
+                            <Checkbox
+                              checked={hasPermission(role.name, permissionType.id)}
+                              onCheckedChange={() => togglePermission(role.name, permissionType.id)}
+                            />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            Please select a page to manage its role permissions.
+          </div>
+        )}
+      </div>
+    </AccessControl>
   )
 }

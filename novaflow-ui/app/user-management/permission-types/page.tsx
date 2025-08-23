@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 import { Trash2, Edit } from "lucide-react"
 import { CrudHeader } from "@/components/um/crud-header"
 import { LoadingSkeleton } from "@/components/um/loading-skeleton"
-import { authService } from "@/lib/auth"
-import { permissionTypesApiService, type PermissionType, type CreatePermissionTypeRequest, type UpdatePermissionTypeRequest } from '@/lib/permission-types-api';
+import { AccessControl } from "@/components/um/access-control"
+import { permissionTypesApiService, type PermissionType, type CreatePermissionTypeRequest, type UpdatePermissionTypeRequest } from '@/lib/permission-types-api'
+import { authService } from '@/lib/auth'
 
 export default function PermissionTypesPage() {
   const [permissionTypes, setPermissionTypes] = useState<PermissionType[]>([])
@@ -25,7 +26,6 @@ export default function PermissionTypesPage() {
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
-    id: '',
     name: '',
     description: ''
   })
@@ -40,12 +40,18 @@ export default function PermissionTypesPage() {
       const data = await permissionTypesApiService.getPermissionTypes()
       setPermissionTypes(data)
     } catch (error) {
-      console.error('Failed to load permission types:', error)
-      toast({
-        title: "Error",
-        description: "Failed to load permission types. Please try again.",
-        variant: "destructive",
-      })
+      // Handle permission errors gracefully - don't show error toast for 403
+      if (error.message?.includes('Access denied')) {
+        console.log('Permission types management access not available for this user:', error.message)
+        setPermissionTypes([])
+      } else {
+        console.error('Failed to load permission types:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load permission types. Please try again.",
+          variant: "destructive",
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -58,7 +64,6 @@ export default function PermissionTypesPage() {
 
   const resetForm = () => {
     setFormData({
-      id: '',
       name: '',
       description: ''
     })
@@ -72,7 +77,6 @@ export default function PermissionTypesPage() {
   const handleEdit = (permissionType: PermissionType) => {
     setEditingPermissionType(permissionType)
     setFormData({
-      id: permissionType.id || '',
       name: permissionType.name || '',
       description: permissionType.description || ''
     })
@@ -80,10 +84,10 @@ export default function PermissionTypesPage() {
   }
 
   const handleSave = async () => {
-    if (!formData.id || !formData.name) {
+    if (!formData.name) {
       toast({
         title: "Validation Error",
-        description: "Permission ID and name are required.",
+        description: "Permission name is required.",
         variant: "destructive",
       })
       return
@@ -96,10 +100,9 @@ export default function PermissionTypesPage() {
 
       if (editingPermissionType) {
         const updateData: UpdatePermissionTypeRequest = {
-          id: formData.id, // ID should remain the same for updates
           name: formData.name,
           description: formData.description,
-          updatedBy: currentUserEmail
+          last_modified_by: currentUserEmail
         }
         await permissionTypesApiService.updatePermissionType(editingPermissionType.id, updateData)
         toast({
@@ -136,13 +139,13 @@ export default function PermissionTypesPage() {
     }
   }
 
-  const handleDelete = async (permissionType: PermissionType) => {
-    if (!confirm(`Are you sure you want to delete permission type "${permissionType.name}"?`)) {
+  const handleDelete = async (id: string) => {
+    if (!confirm(`Are you sure you want to delete permission type?`)) {
       return
     }
 
     try {
-      await permissionTypesApiService.deletePermissionType(permissionType.id)
+      await permissionTypesApiService.deletePermissionType(id)
       toast({
         title: "Success",
         description: "Permission type deleted successfully.",
@@ -158,181 +161,150 @@ export default function PermissionTypesPage() {
     }
   }
 
-  if (loading) {
-    return (
+  return (
+    <AccessControl
+      requiredPath="/user-management/permission-types"
+      requiredPermissions={['READ']}
+      title="Permission Type Management"
+      description="Manage permission types for role-based access control"
+    >
       <div className="space-y-6">
-        <CrudHeader
+        <CrudHeader 
           title="Permission Types"
-          description="Manage permission types that can be assigned to roles"
+          description="Manage permission types for role-based access control"
           searchPlaceholder="Search permission types..."
           searchValue={searchTerm}
           onSearchChange={setSearchTerm}
           addButtonText="Add Permission Type"
-          onAddClick={handleAdd}
+          onAddClick={() => setIsAddDialogOpen(true)}
         />
-        <LoadingSkeleton columns={4} />
-      </div>
-    )
-  }
 
-  return (
-    <div className="space-y-6">
-      <CrudHeader
-        title="Permission Types"
-        description="Manage permission types that can be assigned to roles"
-        searchPlaceholder="Search permission types..."
-        searchValue={searchTerm}
-        onSearchChange={setSearchTerm}
-        addButtonText="Add Permission Type"
-        onAddClick={handleAdd}
-      />
-
-      {filteredPermissionTypes.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          {searchTerm ? 'No permission types found matching your search.' : 'No permission types found.'}
-        </div>
-      ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Permission ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPermissionTypes.map((permissionType) => (
-                <TableRow key={permissionType.id}>
-                  <TableCell className="font-mono text-sm">{permissionType.id}</TableCell>
-                  <TableCell className="font-medium">{permissionType.name}</TableCell>
-                  <TableCell>{permissionType.description || '-'}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(permissionType)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(permissionType)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        {loading ? (
+          <LoadingSkeleton columns={3} />
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              </TableHeader>
+              <TableBody>
+                {filteredPermissionTypes.map((permissionType) => (
+                  <TableRow key={permissionType.id}>
+                    <TableCell className="font-medium">{permissionType.name}</TableCell>
+                    <TableCell>{permissionType.description}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(permissionType)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(permissionType.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
-      {/* Add Permission Type Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Permission Type</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="id">Permission ID *</Label>
-              <Input
-                id="id"
-                value={formData.id}
-                onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                placeholder="e.g., READ_USERS, WRITE_ROLES"
-                className="font-mono"
-              />
-              <p className="text-sm text-muted-foreground">
-                Use uppercase with underscores (e.g., READ_USERS, WRITE_ROLES)
-              </p>
+        {/* Add Permission Type Dialog */}
+        <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+          setIsAddDialogOpen(open)
+          if (!open) {
+            resetForm()
+            setEditingPermissionType(null)
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Permission Type</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Display Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter display name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Enter permission description"
+                  rows={3}
+                />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="name">Display Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter display name"
-              />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? 'Creating...' : 'Create Permission Type'}
+              </Button>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Enter permission description"
-                rows={3}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Creating...' : 'Create Permission Type'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
 
-      {/* Edit Permission Type Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Permission Type</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-id">Permission ID *</Label>
-              <Input
-                id="edit-id"
-                value={formData.id}
-                disabled
-                className="font-mono bg-muted"
-              />
-              <p className="text-sm text-muted-foreground">
-                Permission ID cannot be changed after creation
-              </p>
+        {/* Edit Permission Type Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Permission Type</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-name">Display Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter display name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Enter permission description"
+                  rows={3}
+                />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-name">Display Name *</Label>
-              <Input
-                id="edit-name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter display name"
-              />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? 'Updating...' : 'Update Permission Type'}
+              </Button>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-description">Description</Label>
-              <Textarea
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Enter permission description"
-                rows={3}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Updating...' : 'Update Permission Type'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </AccessControl>
   )
 }

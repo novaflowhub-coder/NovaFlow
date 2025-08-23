@@ -4,11 +4,13 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "permission_types")
 @Schema(description = "Permission type entity representing different types of permissions", example = "{\"id\": \"PERM001\", \"name\": \"Read\", \"description\": \"Read access permission\", \"created_by\": \"system\"}")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class PermissionType {
     
     @Id

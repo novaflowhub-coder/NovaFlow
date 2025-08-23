@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +25,7 @@ public class PermissionTypeController {
     private PermissionTypeService permissionTypeService;
 
     @GetMapping
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management/permission-types')")
     @Operation(summary = "Get all permission types", description = "Retrieve all permission types with optional search")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved permission types")
@@ -45,6 +47,7 @@ public class PermissionTypeController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management/permission-types')")
     @Operation(summary = "Get permission type by ID", description = "Retrieve a specific permission type by its ID")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved permission type"),
@@ -63,30 +66,32 @@ public class PermissionTypeController {
     }
 
     @PostMapping
+    @PreAuthorize("@authz.hasPermission(authentication, 'CREATE', '/user-management/permission-types')")
     @Operation(summary = "Create new permission type", description = "Create a new permission type")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Permission type created successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid input data")
+        @ApiResponse(responseCode = "400", description = "Invalid input or duplicate name")
     })
-    public ResponseEntity<?> createPermissionType(@RequestBody PermissionType permissionType) {
+    public ResponseEntity<PermissionType> createPermissionType(@RequestBody PermissionType permissionType) {
         try {
             PermissionType createdPermissionType = permissionTypeService.createPermissionType(permissionType);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdPermissionType);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create permission type");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'UPDATE', '/user-management/permission-types')")
     @Operation(summary = "Update permission type", description = "Update an existing permission type")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Permission type updated successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid input data"),
-        @ApiResponse(responseCode = "404", description = "Permission type not found")
+        @ApiResponse(responseCode = "404", description = "Permission type not found"),
+        @ApiResponse(responseCode = "400", description = "Invalid input or duplicate name")
     })
-    public ResponseEntity<?> updatePermissionType(
+    public ResponseEntity<PermissionType> updatePermissionType(
             @Parameter(description = "Permission type ID") 
             @PathVariable String id, 
             @RequestBody PermissionType permissionTypeDetails) {
@@ -94,24 +99,25 @@ public class PermissionTypeController {
             PermissionType updatedPermissionType = permissionTypeService.updatePermissionType(id, permissionTypeDetails);
             return ResponseEntity.ok(updatedPermissionType);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().build();
         } catch (RuntimeException e) {
             if (e.getMessage().contains("not found")) {
                 return ResponseEntity.notFound().build();
             }
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update permission type");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update permission type");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'DELETE', '/user-management/permission-types')")
     @Operation(summary = "Delete permission type", description = "Delete a permission type by ID")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Permission type deleted successfully"),
         @ApiResponse(responseCode = "404", description = "Permission type not found")
     })
-    public ResponseEntity<?> deletePermissionType(
+    public ResponseEntity<Void> deletePermissionType(
             @Parameter(description = "Permission type ID") 
             @PathVariable String id) {
         try {
@@ -121,9 +127,9 @@ public class PermissionTypeController {
             if (e.getMessage().contains("not found")) {
                 return ResponseEntity.notFound().build();
             }
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to delete permission type");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to delete permission type");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

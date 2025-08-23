@@ -40,8 +40,11 @@ class PagesApiService {
     };
   }
 
-  async getPages(search?: string): Promise<Page[]> {
-    const url = search ? `${this.BACKEND_URL}/api/pages?search=${encodeURIComponent(search)}` : `${this.BACKEND_URL}/api/pages`;
+  async getPages(searchTerm?: string): Promise<Page[]> {
+    const url = searchTerm 
+      ? `${this.BACKEND_URL}/api/pages/search?term=${encodeURIComponent(searchTerm)}`
+      : `${this.BACKEND_URL}/api/pages`;
+    
     const headers = await this.getAuthHeaders();
     const response = await fetch(url, {
       method: 'GET',
@@ -49,6 +52,9 @@ class PagesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for page management. Please contact your administrator.');
+      }
       throw new Error(`Failed to fetch pages: ${response.statusText}`);
     }
 
@@ -63,6 +69,9 @@ class PagesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for page management. Please contact your administrator.');
+      }
       throw new Error(`Failed to fetch page: ${response.statusText}`);
     }
 
@@ -78,6 +87,9 @@ class PagesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for page management. Please contact your administrator.');
+      }
       const errorText = await response.text();
       throw new Error(errorText || `Failed to create page: ${response.statusText}`);
     }
@@ -94,6 +106,9 @@ class PagesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for page management. Please contact your administrator.');
+      }
       const errorText = await response.text();
       throw new Error(errorText || `Failed to update page: ${response.statusText}`);
     }
@@ -109,6 +124,9 @@ class PagesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for page management. Please contact your administrator.');
+      }
       const errorText = await response.text();
       throw new Error(errorText || `Failed to delete page: ${response.statusText}`);
     }

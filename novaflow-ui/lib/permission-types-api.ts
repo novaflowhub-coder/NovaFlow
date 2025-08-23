@@ -46,6 +46,9 @@ class PermissionTypesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for permission type management. Please contact your administrator.');
+      }
       throw new Error(`Failed to fetch permission types: ${response.statusText}`);
     }
 
@@ -60,6 +63,9 @@ class PermissionTypesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for permission type management. Please contact your administrator.');
+      }
       throw new Error(`Failed to fetch permission type: ${response.statusText}`);
     }
 
@@ -75,6 +81,9 @@ class PermissionTypesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for permission type management. Please contact your administrator.');
+      }
       const errorText = await response.text();
       throw new Error(errorText || `Failed to create permission type: ${response.statusText}`);
     }
@@ -91,6 +100,9 @@ class PermissionTypesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for permission type management. Please contact your administrator.');
+      }
       const errorText = await response.text();
       throw new Error(errorText || `Failed to update permission type: ${response.statusText}`);
     }
@@ -106,6 +118,9 @@ class PermissionTypesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for permission type management. Please contact your administrator.');
+      }
       const errorText = await response.text();
       throw new Error(errorText || `Failed to delete permission type: ${response.statusText}`);
     }

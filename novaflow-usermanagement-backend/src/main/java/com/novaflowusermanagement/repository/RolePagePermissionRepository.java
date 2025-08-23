@@ -7,38 +7,53 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 @Repository
 public interface RolePagePermissionRepository extends JpaRepository<RolePagePermission, String> {
     
-    @Query("SELECT rpp FROM RolePagePermission rpp " +
-           "JOIN FETCH rpp.page p " +
-           "JOIN FETCH rpp.permissionType pt " +
-           "WHERE rpp.roleName IN :roleNames " +
-           "AND p.path = :pagePath " +
-           "AND pt.name = :permissionName " +
-           "AND rpp.isGranted = true")
-    List<RolePagePermission> findGrantedPermissions(
-        @Param("roleNames") Set<String> roleNames,
-        @Param("pagePath") String pagePath,
-        @Param("permissionName") String permissionName
-    );
+    List<RolePagePermission> findByRoleName(String roleName);
+    
+    List<RolePagePermission> findByPageId(String pageId);
+    
+    List<RolePagePermission> findByPermissionTypeId(String permissionTypeId);
+    
+    List<RolePagePermission> findByIsGranted(Boolean isGranted);
+    
+    @Query("SELECT rpp FROM RolePagePermission rpp WHERE rpp.roleName = :roleName AND rpp.isGranted = true")
+    List<RolePagePermission> findGrantedPermissionsByRole(@Param("roleName") String roleName);
+    
+    @Query("SELECT rpp FROM RolePagePermission rpp WHERE rpp.page.id = :pageId AND rpp.isGranted = true")
+    List<RolePagePermission> findGrantedPermissionsByPage(@Param("pageId") String pageId);
+    
+    @Query("SELECT rpp FROM RolePagePermission rpp WHERE rpp.roleName = :roleName AND rpp.page.id = :pageId")
+    List<RolePagePermission> findByRoleNameAndPageId(@Param("roleName") String roleName, @Param("pageId") String pageId);
+    
+    @Query("SELECT rpp FROM RolePagePermission rpp WHERE rpp.roleName = :roleName AND rpp.page.id = :pageId AND rpp.permissionType.id = :permissionTypeId")
+    Optional<RolePagePermission> findByRoleNameAndPageIdAndPermissionTypeId(
+        @Param("roleName") String roleName, 
+        @Param("pageId") String pageId, 
+        @Param("permissionTypeId") String permissionTypeId);
     
     @Query("SELECT rpp FROM RolePagePermission rpp " +
            "JOIN FETCH rpp.page p " +
            "JOIN FETCH rpp.permissionType pt " +
-           "WHERE rpp.roleName IN :roleNames " +
-           "AND rpp.isGranted = true")
-    List<RolePagePermission> findAllGrantedPermissionsByRoles(@Param("roleNames") Set<String> roleNames);
-    
-    @Query("SELECT rpp FROM RolePagePermission rpp " +
            "WHERE rpp.roleName = :roleName " +
-           "AND rpp.page.id = :pageId " +
-           "AND rpp.permissionType.id = :permissionTypeId")
-    List<RolePagePermission> findByRoleNameAndPageIdAndPermissionTypeId(
-        @Param("roleName") String roleName,
-        @Param("pageId") String pageId,
-        @Param("permissionTypeId") String permissionTypeId
-    );
+           "ORDER BY p.name, pt.name")
+    List<RolePagePermission> findByRoleNameWithJoinedData(@Param("roleName") String roleName);
+    
+    @Query("SELECT rpp FROM RolePagePermission rpp " +
+           "JOIN FETCH rpp.page p " +
+           "JOIN FETCH rpp.permissionType pt " +
+           "ORDER BY rpp.roleName, p.name, pt.name")
+    List<RolePagePermission> findAllWithJoinedData();
+    
+    @Query("SELECT rpp FROM RolePagePermission rpp " +
+           "JOIN FETCH rpp.page p " +
+           "JOIN FETCH rpp.permissionType pt " +
+           "WHERE (LOWER(rpp.roleName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+           "   OR LOWER(p.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+           "   OR LOWER(pt.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+           "ORDER BY rpp.roleName, p.name, pt.name")
+    List<RolePagePermission> findAllWithJoinedDataBySearch(@Param("searchTerm") String searchTerm);
 }

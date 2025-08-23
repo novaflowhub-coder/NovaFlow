@@ -334,3 +334,39 @@ export type VersionHistoryEntry = {
   previousState: any
   newState: any
 }
+
+// User Management Types
+export interface Page {
+  id: string;
+  name: string;
+  path: string;
+  description?: string;
+  created_by: string;
+  created_date: string;
+  last_modified_by?: string;
+  last_modified_date?: string;
+}
+
+export interface PermissionType {
+  id: string;
+  name: string;
+  description?: string;
+  created_by: string;
+  created_date: string;
+  last_modified_by?: string;
+  last_modified_date?: string;
+}
+
+export interface RolePagePermission {
+  id?: string;
+  roleName: string;
+  page?: Page;
+  pageId?: string;
+  permissionType?: PermissionType;
+  permissionTypeId?: string;
+  isGranted?: boolean;
+  createdBy?: string;
+  createdDate?: string;
+  lastModifiedBy?: string;
+  lastModifiedDate?: string;
+}

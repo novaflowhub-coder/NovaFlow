@@ -83,6 +83,11 @@ class DomainApiService {
     return this.handleResponse<Domain[]>(response);
   }
 
+  // Alias for getAllDomains for compatibility
+  async getDomains(): Promise<Domain[]> {
+    return this.getAllDomains();
+  }
+
   // Get domain by ID
   async getDomainById(id: string): Promise<Domain> {
     const headers = await this.getAuthHeaders();

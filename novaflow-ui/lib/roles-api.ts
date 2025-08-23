@@ -52,6 +52,9 @@ class RolesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for role management. Please contact your administrator.');
+      }
       throw new Error(`Failed to fetch roles: ${response.statusText}`);
     }
 
@@ -66,6 +69,9 @@ class RolesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for role management. Please contact your administrator.');
+      }
       throw new Error(`Failed to fetch role: ${response.statusText}`);
     }
 
@@ -81,6 +87,9 @@ class RolesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for role management. Please contact your administrator.');
+      }
       const errorText = await response.text();
       throw new Error(errorText || `Failed to create role: ${response.statusText}`);
     }
@@ -97,6 +106,9 @@ class RolesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for role management. Please contact your administrator.');
+      }
       const errorText = await response.text();
       throw new Error(errorText || `Failed to update role: ${response.statusText}`);
     }
@@ -112,6 +124,9 @@ class RolesApiService {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Access denied. You may not have the required permissions for role management. Please contact your administrator.');
+      }
       const errorText = await response.text();
       throw new Error(errorText || `Failed to delete role: ${response.statusText}`);
     }

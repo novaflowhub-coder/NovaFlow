@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -26,6 +27,7 @@ public class RoleController {
     private RoleService roleService;
     
     @GetMapping
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management/roles')")
     @Operation(summary = "Get all roles", description = "Retrieve all roles in the system")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved roles")
     public ResponseEntity<List<Role>> getAllRoles() {
@@ -34,6 +36,7 @@ public class RoleController {
     }
     
     @GetMapping("/{id}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management/roles')")
     @Operation(summary = "Get role by ID", description = "Retrieve a specific role by its ID")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Role found"),
@@ -46,6 +49,7 @@ public class RoleController {
     }
     
     @GetMapping("/domain/{domainId}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management/roles')")
     @Operation(summary = "Get roles by domain", description = "Retrieve roles for a specific domain")
     public ResponseEntity<List<Role>> getRolesByDomain(@Parameter(description = "Domain ID") @PathVariable String domainId) {
         List<Role> roles = roleService.getRolesByDomain(domainId);
@@ -53,6 +57,7 @@ public class RoleController {
     }
     
     @GetMapping("/name/{name}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management/roles')")
     @Operation(summary = "Get roles by name", description = "Retrieve roles by name")
     public ResponseEntity<List<Role>> getRolesByName(@Parameter(description = "Role name") @PathVariable String name) {
         List<Role> roles = roleService.getRolesByName(name);
@@ -60,6 +65,7 @@ public class RoleController {
     }
     
     @GetMapping("/search")
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management/roles')")
     @Operation(summary = "Search roles", description = "Search roles by name or description")
     public ResponseEntity<List<Role>> searchRoles(@Parameter(description = "Search term") @RequestParam String term) {
         List<Role> roles = roleService.searchRoles(term);
@@ -67,6 +73,7 @@ public class RoleController {
     }
     
     @GetMapping("/domain/{domainId}/search")
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management/roles')")
     @Operation(summary = "Search roles by domain", description = "Search roles within a specific domain")
     public ResponseEntity<List<Role>> searchRolesByDomain(
             @Parameter(description = "Domain ID") @PathVariable String domainId,
@@ -76,20 +83,22 @@ public class RoleController {
     }
     
     @PostMapping
+    @PreAuthorize("@authz.hasPermission(authentication, 'CREATE', '/user-management/roles')")
     @Operation(summary = "Create role", description = "Create a new role")
     @ApiResponse(responseCode = "201", description = "Role created successfully")
-    public ResponseEntity<Role> createRole(@Valid @RequestBody Role role) {
+    public ResponseEntity<?> createRole(@Valid @RequestBody Role role) {
         try {
             Role createdRole = roleService.createRole(role);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdRole);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
         }
     }
     
     @PutMapping("/{id}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'UPDATE', '/user-management/roles')")
     @Operation(summary = "Update role", description = "Update an existing role")
     public ResponseEntity<Role> updateRole(@Parameter(description = "Role ID") @PathVariable String id, @RequestBody Role roleDetails) {
         try {
@@ -106,6 +115,7 @@ public class RoleController {
     }
     
     @PutMapping("/{id}/user-count")
+    @PreAuthorize("@authz.hasPermission(authentication, 'UPDATE', '/user-management/roles')")
     @Operation(summary = "Update user count", description = "Update the user count for a role")
     public ResponseEntity<Role> updateUserCount(@Parameter(description = "Role ID") @PathVariable String id, @RequestParam Integer userCount) {
         Role role = roleService.updateUserCount(id, userCount);
@@ -116,6 +126,7 @@ public class RoleController {
     }
     
     @DeleteMapping("/{id}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'DELETE', '/user-management/roles')")
     @Operation(summary = "Delete role", description = "Delete a role")
     @ApiResponse(responseCode = "204", description = "Role deleted successfully")
     public ResponseEntity<Void> deleteRole(@Parameter(description = "Role ID") @PathVariable String id) {

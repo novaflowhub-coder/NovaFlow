@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +25,7 @@ public class PageController {
     private PageService pageService;
 
     @GetMapping
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management/pages')")
     @Operation(summary = "Get all pages", description = "Retrieve all pages with optional search")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved pages")
@@ -45,6 +47,7 @@ public class PageController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management/pages')")
     @Operation(summary = "Get page by ID", description = "Retrieve a specific page by its ID")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved page"),
@@ -63,6 +66,7 @@ public class PageController {
     }
 
     @PostMapping
+    @PreAuthorize("@authz.hasPermission(authentication, 'CREATE', '/user-management/pages')")
     @Operation(summary = "Create new page", description = "Create a new page")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Page created successfully"),
@@ -80,6 +84,7 @@ public class PageController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'UPDATE', '/user-management/pages')")
     @Operation(summary = "Update page", description = "Update an existing page")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Page updated successfully"),
@@ -106,6 +111,7 @@ public class PageController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@authz.hasPermission(authentication, 'DELETE', '/user-management/pages')")
     @Operation(summary = "Delete page", description = "Delete a page by ID")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Page deleted successfully"),
