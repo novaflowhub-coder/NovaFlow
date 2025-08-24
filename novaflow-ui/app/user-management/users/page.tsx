@@ -217,7 +217,7 @@ export default function UsersPage() {
   return (
     <AccessControl
       requiredPath="/user-management"
-      requiredPermissions={['READ', 'VIEW']}
+      requiredPermissions={['READ']}
       title="User Management"
       description="Manage system users and their information"
     >

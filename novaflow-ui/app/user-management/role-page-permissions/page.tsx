@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Save } from "lucide-react"
 import { LoadingSkeleton } from "@/components/um/loading-skeleton"
 import { AccessControl } from "@/components/um/access-control"
+import { AlertCircle } from "lucide-react"
 import { rolesApiService, type Role } from '@/lib/roles-api';
 import { pagesApiService, type Page } from '@/lib/pages-api';
 import { permissionTypesApiService, type PermissionType } from '@/lib/permission-types-api';
@@ -61,12 +62,13 @@ export default function RolePagePermissionsPage() {
       // Handle pages data
       if (pagesData.status === 'fulfilled') {
         setPages(pagesData.value)
+        console.log('Pages loaded:', pagesData.value.length, pagesData.value)
         // Auto-select first page if available
         if (pagesData.value.length > 0) {
           setSelectedPageId(pagesData.value[0].id)
         }
       } else {
-        console.log('Pages access not available:', pagesData.reason?.message)
+        console.error('Pages access failed:', pagesData.reason)
         setPages([])
       }
       
@@ -204,9 +206,20 @@ export default function RolePagePermissionsPage() {
         {/* Page Selection */}
         <div className="flex items-center gap-4">
           <div className="flex-1 max-w-md">
+            {pages.length === 0 && !loading ? (
+              <div className="p-4 border border-destructive/50 rounded-md bg-destructive/5">
+                <div className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm font-medium">Unable to load pages</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You may not have permission to access page management. Please contact your administrator.
+                </p>
+              </div>
+            ) : (
             <Select value={selectedPageId} onValueChange={setSelectedPageId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a page" />
+                <SelectValue placeholder={pages.length === 0 ? "No pages available" : "Select a page"} />
               </SelectTrigger>
               <SelectContent>
                 {pages.map((page) => (
@@ -216,6 +229,7 @@ export default function RolePagePermissionsPage() {
                 ))}
               </SelectContent>
             </Select>
+            )}
           </div>
           <Button onClick={handleSave} disabled={saving || !selectedPageId}>
             <Save className="h-4 w-4 mr-2" />

@@ -27,7 +27,7 @@ public class UserController {
     private UserService userService;
     
     @GetMapping
-    @PreAuthorize("@authz.hasPermission(authentication, 'view', '/user-management')")
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management')")
     @Operation(summary = "Get all users", description = "Retrieve all users in the system")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved users")
     public ResponseEntity<List<User>> getAllUsers() {
@@ -36,7 +36,7 @@ public class UserController {
     }
     
     @GetMapping("/{id}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'view', '/user-management')")
+    @PreAuthorize("@authz.hasPermission(authentication, 'READ', '/user-management')")
     @Operation(summary = "Get user by ID", description = "Retrieve a specific user by their ID")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "User found"),
@@ -93,7 +93,7 @@ public class UserController {
     }
     
     @PostMapping
-    @PreAuthorize("@authz.hasPermission(authentication, 'edit', '/user-management')")
+    @PreAuthorize("@authz.hasPermission(authentication, 'CREATE', '/user-management')")
     @Operation(summary = "Create user", description = "Create a new user")
     @ApiResponse(responseCode = "201", description = "User created successfully")
     public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
@@ -108,7 +108,7 @@ public class UserController {
     }
     
     @PutMapping("/{id}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'edit', '/user-management')")
+    @PreAuthorize("@authz.hasPermission(authentication, 'UPDATE', '/user-management')")
     @Operation(summary = "Update user", description = "Update an existing user")
     public ResponseEntity<User> updateUser(@Parameter(description = "User ID") @PathVariable String id, @RequestBody User userDetails) {
         try {
@@ -155,7 +155,7 @@ public class UserController {
     }
     
     @DeleteMapping("/{id}")
-    @PreAuthorize("@authz.hasPermission(authentication, 'delete', '/user-management')")
+    @PreAuthorize("@authz.hasPermission(authentication, 'DELETE', '/user-management')")
     @Operation(summary = "Delete user", description = "Delete a user")
     @ApiResponse(responseCode = "204", description = "User deleted successfully")
     public ResponseEntity<Void> deleteUser(@Parameter(description = "User ID") @PathVariable String id) {

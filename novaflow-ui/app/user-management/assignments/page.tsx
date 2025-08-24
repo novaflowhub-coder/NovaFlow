@@ -61,8 +61,9 @@ export default function AssignmentsPage() {
       // Handle users data
       if (usersData.status === 'fulfilled') {
         setUsers(usersData.value)
+        console.log('Users loaded:', usersData.value.length, usersData.value)
       } else {
-        console.log('Users access not available:', usersData.reason?.message)
+        console.error('Users access failed:', usersData.reason)
         setUsers([])
       }
       

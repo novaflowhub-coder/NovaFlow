@@ -4,13 +4,11 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "role_page_permissions")
 @Schema(description = "Entity representing role-page permissions", example = "{\"id\": \"RPP001\", \"roleName\": \"Admin\", \"pageId\": \"PAGE001\", \"permissionTypeId\": \"PERM001\", \"isGranted\": true}")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class RolePagePermission {
     
     @Id
@@ -23,17 +21,15 @@ public class RolePagePermission {
     private String roleName;
     
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "page_id")
     @Schema(description = "Page associated with the permission")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Page page;
     
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "permission_type_id")
     @Schema(description = "Permission type")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private PermissionType permissionType;
     
     @NotNull

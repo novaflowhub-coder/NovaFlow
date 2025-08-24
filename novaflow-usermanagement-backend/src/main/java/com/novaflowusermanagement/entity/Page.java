@@ -4,13 +4,11 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "pages")
 @Schema(description = "Page entity representing application pages", example = "{\"id\": \"PAGE001\", \"name\": \"User Management\", \"path\": \"/user-management\", \"description\": \"Manage users and roles\", \"created_by\": \"system\"}")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Page {
     
     @Id
