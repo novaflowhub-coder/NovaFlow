@@ -15,6 +15,8 @@ import { LoadingSkeleton } from "@/components/um/loading-skeleton"
 import { AccessControl } from "@/components/um/access-control"
 import { userApiService, User, CreateUserRequest, UpdateUserRequest } from "@/lib/user-api"
 import { authService } from "@/lib/auth"
+import { userDomainRolesApiService } from "@/lib/user-domain-roles-api"
+import { rolesApiService } from "@/lib/roles-api"
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -25,6 +27,7 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
+  const [selectedDomainId, setSelectedDomainId] = useState<string>('')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -37,6 +40,23 @@ export default function UsersPage() {
 
   useEffect(() => {
     loadUsers()
+    // Load initial domain from global state
+    const savedDomainId = localStorage.getItem("selectedDomainId")
+    if (savedDomainId) {
+      setSelectedDomainId(savedDomainId)
+    }
+
+    // Listen for global domain changes
+    const handleDomainChange = (event: CustomEvent) => {
+      const { domain } = event.detail
+      setSelectedDomainId(domain)
+    }
+
+    window.addEventListener('domainChanged', handleDomainChange as EventListener)
+    
+    return () => {
+      window.removeEventListener('domainChanged', handleDomainChange as EventListener)
+    }
   }, [])
 
   const loadUsers = async () => {
@@ -61,6 +81,21 @@ export default function UsersPage() {
     user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.username?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const findDefaultRoleForDomain = async (domainId: string): Promise<string | null> => {
+    try {
+      const roles = await rolesApiService.getRoles()
+      // Look for a "User" role in the specified domain
+      const defaultRole = roles.find(role => 
+        role.domain_id === domainId && 
+        (role.name.toLowerCase().includes('user') || role.name.toLowerCase().includes('member'))
+      )
+      return defaultRole?.id || null
+    } catch (error) {
+      console.error('Failed to find default role for domain:', error)
+      return null
+    }
+  }
 
   const resetForm = () => {
     setFormData({
@@ -145,6 +180,7 @@ export default function UsersPage() {
           full_name: formData.full_name?.trim() || undefined,
           department: formData.department?.trim() || undefined,
           status: formData.status,
+          is_active: true,
           updated_by: currentUserEmail
         }
         await userApiService.updateUser(editingUser.id, updateData)
@@ -161,9 +197,26 @@ export default function UsersPage() {
           full_name: formData.full_name?.trim() || undefined,
           department: formData.department?.trim() || undefined,
           status: formData.status,
+          is_active: true,
           created_by: currentUserEmail
         }
-        await userApiService.createUser(createData)
+        const newUser = await userApiService.createUser(createData)
+        
+        // Auto-assign user to a default role in the selected domain
+        if (selectedDomainId && newUser?.id) {
+          try {
+            // Find a default role for the domain (e.g., "User" role)
+            const defaultRoleId = await findDefaultRoleForDomain(selectedDomainId)
+            if (defaultRoleId) {
+              await userDomainRolesApiService.bulkAssignRolesToUser(newUser.id, [defaultRoleId])
+              console.log(`Auto-assigned user ${newUser.id} to role ${defaultRoleId} in domain ${selectedDomainId}`)
+            }
+          } catch (roleError) {
+            console.warn('Failed to auto-assign role to new user:', roleError)
+            // Don't fail user creation if role assignment fails
+          }
+        }
+        
         toast({
           title: "Success",
           description: "User created successfully.",

@@ -12,37 +12,86 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-
-// Mock domains - in real app, this would come from API/context
-const mockUserDomains = [
-  { id: "DOM001", name: "Finance", code: "FINANCE", isActive: true },
-  { id: "DOM002", name: "Human Resources", code: "HR", isActive: true },
-  { id: "DOM003", name: "Sales", code: "SALES", isActive: true },
-]
+import { authService, UserDomain } from "@/lib/auth"
+import { useToast } from "@/hooks/use-toast"
 
 export function DomainSelector() {
-  const [selectedDomain, setSelectedDomain] = useState(mockUserDomains[0])
-  const [userDomains, setUserDomains] = useState(mockUserDomains)
+  const { toast } = useToast()
+  const [selectedDomain, setSelectedDomain] = useState<UserDomain | null>(null)
+  const [userDomains, setUserDomains] = useState<UserDomain[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // In real app, this would be managed by context/state management
   useEffect(() => {
-    // Load user's accessible domains and last selected domain
-    const savedDomainId = localStorage.getItem("selectedDomainId")
-    if (savedDomainId) {
-      const savedDomain = userDomains.find(d => d.id === savedDomainId)
-      if (savedDomain) {
-        setSelectedDomain(savedDomain)
-      }
-    }
+    loadUserDomains()
   }, [])
 
-  const handleDomainChange = (domain: typeof mockUserDomains[0]) => {
+  const loadUserDomains = async () => {
+    try {
+      setLoading(true)
+      console.log('Loading user domains from /api/me...')
+      const userProfile = await authService.fetchUserProfile()
+      console.log('User profile response:', userProfile)
+      
+      if (userProfile.domains && userProfile.domains.length > 0) {
+        console.log('Found user domains:', userProfile.domains)
+        setUserDomains(userProfile.domains)
+        
+        // Check for saved domain ID or use first domain
+        const savedDomainId = localStorage.getItem("selectedDomainId")
+        if (savedDomainId) {
+          const savedDomain = userProfile.domains.find(d => d.id.toString() === savedDomainId)
+          if (savedDomain) {
+            setSelectedDomain(savedDomain)
+          } else {
+            setSelectedDomain(userProfile.domains[0])
+            localStorage.setItem("selectedDomainId", userProfile.domains[0].id.toString())
+          }
+        } else {
+          setSelectedDomain(userProfile.domains[0])
+          localStorage.setItem("selectedDomainId", userProfile.domains[0].id.toString())
+        }
+      } else {
+        // Fallback if no domains returned
+        console.warn('No domains found for user, userProfile:', userProfile)
+        console.warn('userProfile.domains:', userProfile.domains)
+        const fallbackDomain = { id: 1, code: 'ADMIN', name: 'Administration' }
+        setUserDomains([fallbackDomain])
+        setSelectedDomain(fallbackDomain)
+        localStorage.setItem("selectedDomainId", fallbackDomain.id.toString())
+      }
+    } catch (error) {
+      console.error('Failed to load user domains:', error)
+      console.error('Error details:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load user domains",
+        variant: "destructive"
+      })
+      // Fallback to a default domain
+      const fallbackDomain = { id: 1, code: 'ADMIN', name: 'Administration' }
+      setUserDomains([fallbackDomain])
+      setSelectedDomain(fallbackDomain)
+      localStorage.setItem("selectedDomainId", fallbackDomain.id.toString())
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDomainChange = (domain: UserDomain) => {
     setSelectedDomain(domain)
-    localStorage.setItem("selectedDomainId", domain.id)
+    localStorage.setItem("selectedDomainId", domain.id.toString())
     
-    // In real app, this would trigger a context update that filters all data
-    // and refreshes the current page with domain-specific data
-    window.dispatchEvent(new CustomEvent("domainChanged", { detail: domain }))
+    // Dispatch global domain change event for all pages to listen to
+    window.dispatchEvent(new CustomEvent("domainChanged", { detail: { domain: domain.id.toString() } }))
+  }
+
+  if (loading) {
+    return (
+      <Button variant="outline" className="h-8 gap-2 px-3" disabled>
+        <Building className="h-4 w-4" />
+        <span className="hidden sm:inline-block">Loading...</span>
+      </Button>
+    )
   }
 
   return (
@@ -50,9 +99,9 @@ export function DomainSelector() {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="h-8 gap-2 px-3">
           <Building className="h-4 w-4" />
-          <span className="hidden sm:inline-block">{selectedDomain.name}</span>
+          <span className="hidden sm:inline-block">{selectedDomain?.name}</span>
           <Badge variant="secondary" className="hidden md:inline-flex text-xs">
-            {selectedDomain.code}
+            {selectedDomain?.code}
           </Badge>
           <ChevronDown className="h-4 w-4" />
         </Button>

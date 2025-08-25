@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface IntegrationObjectRepository extends JpaRepository<IntegrationObject, String> {
@@ -40,7 +41,7 @@ public interface IntegrationObjectRepository extends JpaRepository<IntegrationOb
     
     List<IntegrationObject> findByDomainIdAndType(String domainId, String type);
     
-    List<IntegrationObject> findByConnectionId(String connectionId);
+    List<IntegrationObject> findByConnectionId(UUID connectionId);
     
     Optional<IntegrationObject> findByDomainIdAndName(String domainId, String name);
     
@@ -51,11 +52,11 @@ public interface IntegrationObjectRepository extends JpaRepository<IntegrationOb
     List<IntegrationObject> findAllActive();
     
     @Query("SELECT io FROM IntegrationObject io WHERE io.connection.id = :connectionId AND io.status = 'A'")
-    List<IntegrationObject> findActiveByConnectionId(@Param("connectionId") String connectionId);
+    List<IntegrationObject> findActiveByConnectionId(@Param("connectionId") UUID connectionId);
     
     long countByDomainId(String domainId);
     
     long countByDomainIdAndStatus(String domainId, Character status);
     
-    long countByConnectionId(String connectionId);
+    long countByConnectionId(UUID connectionId);
 }

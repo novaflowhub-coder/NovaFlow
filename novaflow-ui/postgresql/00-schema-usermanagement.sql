@@ -31,7 +31,7 @@ CREATE TABLE roles (
     created_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_by TEXT,
     updated_date TIMESTAMPTZ,
-    FOREIGN KEY (domain_id) REFERENCES Domains(id)
+    FOREIGN KEY (domain_id) REFERENCES domains(id)
 );
 
 CREATE TABLE users (

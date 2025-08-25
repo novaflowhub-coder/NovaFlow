@@ -195,6 +195,67 @@ public class AuthorizationService {
         }
     }
 
+    /**
+     * Get accessible domains for a user from database
+     */
+    @Cacheable(value = "userDomains", key = "#authentication.name")
+    public List<UserDomain> getUserDomains(Authentication authentication) {
+        Identity identity = getCurrentIdentity(authentication);
+        
+        String sql = """
+            SELECT DISTINCT d.id, d.code, d.name
+            FROM user_management.users u
+            JOIN user_management.user_domain_roles udr ON udr.user_id = u.id AND udr.is_active = TRUE
+            JOIN user_management.roles r ON r.id = udr.role_id
+            JOIN user_management.domains d ON d.id = r.domain_id AND d.is_active = TRUE
+            WHERE u.email = ? AND u.is_active = TRUE
+            ORDER BY d.code
+        """;
+        
+        try {
+            List<UserDomain> domains = jdbcTemplate.query(sql, (rs, rowNum) -> 
+                new UserDomain(
+                    rs.getString("id"),
+                    rs.getString("code"), 
+                    rs.getString("name")
+                ), identity.email());
+            
+            System.out.println("DEBUG: getUserDomains for email: " + identity.email());
+            System.out.println("DEBUG: SQL query returned " + domains.size() + " domains: " + domains);
+            
+            auditLogger.emit("DOMAIN_QUERY", "USER", identity.email(), "SUCCESS", domains.size() + " domains found");
+            
+            // If no domains found, this means user has no domain assignments in database
+            if (domains.isEmpty()) {
+                System.out.println("DEBUG: No domains found for user, returning empty list");
+                return new ArrayList<>();
+            }
+            
+            return domains;
+        } catch (Exception e) {
+            System.out.println("DEBUG: Error in getUserDomains: " + e.getMessage());
+            auditLogger.emit("DOMAIN_QUERY", "USER", identity.email(), "ERROR", "Failed to get user domains: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    // Domain data transfer object
+    public static class UserDomain {
+        private final String id;
+        private final String code;
+        private final String name;
+
+        public UserDomain(String id, String code, String name) {
+            this.id = id;
+            this.code = code;
+            this.name = name;
+        }
+
+        public String getId() { return id; }
+        public String getCode() { return code; }
+        public String getName() { return name; }
+    }
+
     // Inner classes for data transfer
 
     public static class UserPermission {

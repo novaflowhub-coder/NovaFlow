@@ -39,13 +39,15 @@ public class MeController {
         
         Set<String> effectiveRoles = authorizationService.getEffectiveRoles(authentication);
         List<AuthorizationService.UserPermission> permissions = authorizationService.getAllPermissions(authentication);
+        List<AuthorizationService.UserDomain> domains = authorizationService.getUserDomains(authentication);
 
-        // Google OIDC: Return identity with DB-derived roles and permissions only
+        // Google OIDC: Return identity with DB-derived roles, permissions, and domains
         UserProfileResponse response = new UserProfileResponse(
             identity.sub(),
             identity.email(),
             effectiveRoles,
-            permissions
+            permissions,
+            domains
         );
 
         return ResponseEntity.ok(response);
@@ -76,7 +78,7 @@ public class MeController {
     }
 
     // Response DTOs
-    @Schema(description = "User profile information with roles and permissions")
+    @Schema(description = "User profile information with roles, permissions, and domains")
     public static class UserProfileResponse {
         @Schema(description = "User's unique identifier")
         private final String sub;
@@ -89,12 +91,16 @@ public class MeController {
         
         @Schema(description = "User's permissions across all accessible pages")
         private final List<AuthorizationService.UserPermission> permissions;
+        
+        @Schema(description = "User's accessible domains")
+        private final List<AuthorizationService.UserDomain> domains;
 
-        public UserProfileResponse(String sub, String email, Set<String> roles, List<AuthorizationService.UserPermission> permissions) {
+        public UserProfileResponse(String sub, String email, Set<String> roles, List<AuthorizationService.UserPermission> permissions, List<AuthorizationService.UserDomain> domains) {
             this.sub = sub;
             this.email = email;
             this.roles = roles;
             this.permissions = permissions;
+            this.domains = domains;
         }
 
         // Getters
@@ -102,6 +108,7 @@ public class MeController {
         public String getEmail() { return email; }
         public Set<String> getRoles() { return roles; }
         public List<AuthorizationService.UserPermission> getPermissions() { return permissions; }
+        public List<AuthorizationService.UserDomain> getDomains() { return domains; }
     }
 
     @Schema(description = "Authorization request for permission checking")

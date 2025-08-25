@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -36,11 +37,11 @@ public class IntegrationObjectService {
         return integrationObjectRepository.findByType(type);
     }
 
-    public List<IntegrationObject> getIntegrationObjectsByConnection(String connectionId) {
+    public List<IntegrationObject> getIntegrationObjectsByConnection(UUID connectionId) {
         return integrationObjectRepository.findByConnectionId(connectionId);
     }
 
-    public List<IntegrationObject> getActiveIntegrationObjectsByConnection(String connectionId) {
+    public List<IntegrationObject> getActiveIntegrationObjectsByConnection(UUID connectionId) {
         return integrationObjectRepository.findActiveByConnectionId(connectionId);
     }
 
@@ -104,7 +105,7 @@ public class IntegrationObjectService {
         return integrationObjectRepository.countByDomainIdAndStatus(domainId, 'A');
     }
 
-    public long getIntegrationObjectCountByConnection(String connectionId) {
+    public long getIntegrationObjectCountByConnection(UUID connectionId) {
         return integrationObjectRepository.countByConnectionId(connectionId);
     }
 

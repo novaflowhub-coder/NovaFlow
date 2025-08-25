@@ -2,6 +2,12 @@
 import { jwtDecode } from 'jwt-decode'
 import { toast } from '@/hooks/use-toast';
 
+export interface UserDomain {
+  id: number;
+  code: string;
+  name: string;
+}
+
 export interface GoogleUser {
   sub: string;
   email: string;
@@ -9,6 +15,7 @@ export interface GoogleUser {
   picture?: string;
   given_name?: string;
   family_name?: string;
+  domains?: UserDomain[];
 }
 
 export interface AuthUser {
@@ -302,6 +309,8 @@ class AuthService {
     }
 
     const userProfile = await response.json()
+    console.log('[AUTH DEBUG] User profile received from backend:', userProfile)
+    console.log('[AUTH DEBUG] Domains field:', userProfile.domains)
     localStorage.setItem('nf_user', JSON.stringify(userProfile))
     return userProfile
   }

@@ -148,7 +148,26 @@ export default function RolePagePermissionsPage() {
 
     try {
       setSaving(true)
-      await rolePagePermissionsApiService.saveRolePagePermissions(selectedPageId, permissions)
+      
+      // Build array of currently checked permissions from UI state
+      const checkedPermissions: RolePagePermission[] = []
+      
+      for (const role of roles) {
+        for (const permissionType of permissionTypes) {
+          if (hasPermission(role.name, permissionType.id)) {
+            checkedPermissions.push({
+              roleName: role.name,
+              pageId: selectedPageId,
+              permissionTypeId: permissionType.id,
+              isGranted: true
+            })
+          }
+        }
+      }
+      
+      console.log('Checked permissions being saved:', checkedPermissions)
+      
+      await rolePagePermissionsApiService.saveRolePagePermissions(selectedPageId, checkedPermissions)
       toast({
         title: "Success",
         description: "Role-page permissions saved successfully.",

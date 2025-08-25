@@ -8,9 +8,9 @@ import io.swagger.v3.oas.annotations.info.Info;
 @SpringBootApplication
 @OpenAPIDefinition(
     info = @Info(
-        title = "NovaFlow Metadata Management API",
-        version = "1.0.0",
-        description = "REST API for managing NovaFlow metadata including connections, objects, rules, and configurations"
+        title = "NovaFlow Metadata API",
+        version = "1.0",
+        description = "API for managing NovaFlow metadata"
     )
 )
 public class NovaFlowMetadataApplication {

@@ -274,37 +274,53 @@ class RolePagePermissionsApiService {
     const currentUser = this.getCurrentUser();
     const currentUserEmail = currentUser?.email || 'system';
 
+    console.log('=== SAVE ROLE PAGE PERMISSIONS DEBUG ===');
+    console.log('PageId:', pageId);
+    console.log('New permissions (checked items):', permissions);
+
     // Get existing permissions for this page
     const existingPermissions = await this.getPermissionsByPage(pageId);
+    console.log('Existing permissions:', existingPermissions);
     
-    // Create sets for comparison
-    const newPermissionKeys = new Set(
+    // Create sets for comparison - these are the permissions that should exist after save
+    const desiredPermissionKeys = new Set(
       permissions.map(p => `${p.roleName}-${p.permissionTypeId}`)
     );
     const existingPermissionKeys = new Set(
       existingPermissions.map(p => `${p.roleName}-${p.permissionType?.id}`)
     );
 
-    // Grant new permissions
+    console.log('Desired permission keys (what should exist):', Array.from(desiredPermissionKeys));
+    console.log('Existing permission keys (what currently exists):', Array.from(existingPermissionKeys));
+
+    // Create permissions that are desired but don't exist yet
     for (const permission of permissions) {
       const key = `${permission.roleName}-${permission.permissionTypeId}`;
       if (!existingPermissionKeys.has(key) && permission.permissionTypeId) {
+        console.log('Creating new permission:', key);
         await this.createRolePagePermissionFromIds(
           permission.roleName,
           pageId,
           permission.permissionTypeId,
           true
         );
+      } else {
+        console.log('Permission already exists, keeping:', key);
       }
     }
 
-    // Revoke removed permissions
+    // Delete permissions that exist but are not desired (unchecked in UI)
     for (const existingPermission of existingPermissions) {
       const key = `${existingPermission.roleName}-${existingPermission.permissionType?.id}`;
-      if (!newPermissionKeys.has(key) && existingPermission.id) {
-        await this.revokePermission(existingPermission.id);
+      if (!desiredPermissionKeys.has(key) && existingPermission.id) {
+        console.log('Deleting unwanted permission:', key, 'ID:', existingPermission.id);
+        await this.deleteRolePagePermission(existingPermission.id);
+      } else {
+        console.log('Permission is desired, keeping:', key);
       }
     }
+    
+    console.log('=== SAVE COMPLETE ===');
   }
 }
 

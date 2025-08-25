@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-@RestController
+// @RestController // DISABLED - Enable later
 @RequestMapping("/api/approvals")
 @Tag(name = "Approval Management", description = "APIs for managing approval workflows")
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})

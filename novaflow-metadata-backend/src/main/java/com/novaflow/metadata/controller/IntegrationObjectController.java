@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/integration-objects")
@@ -64,7 +65,7 @@ public class IntegrationObjectController {
     @GetMapping("/connection/{connectionId}")
     @Operation(summary = "Get integration objects by connection", description = "Retrieve all integration objects for a specific connection")
     public ResponseEntity<List<IntegrationObject>> getIntegrationObjectsByConnection(
-            @Parameter(description = "Connection ID") @PathVariable String connectionId) {
+            @Parameter(description = "Connection ID") @PathVariable UUID connectionId) {
         List<IntegrationObject> objects = integrationObjectService.getIntegrationObjectsByConnection(connectionId);
         return ResponseEntity.ok(objects);
     }
